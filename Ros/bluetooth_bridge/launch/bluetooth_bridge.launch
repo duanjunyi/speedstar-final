@@ -1,0 +1,34 @@
+<launch>
+  <node name="bluetooth_bridge" pkg="bluetooth_bridge" type="bluetooth_bridge_server_node.py" output="screen">
+  </node>
+  <node name="serial_port" pkg="bluetooth_bridge" type="serial_port_server_node.py" output="screen">
+  </node>
+  <node name="sound_server_node" pkg="bluetooth_bridge" type="sound_server_node.py" output="screen">
+
+  </node>
+  <node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode" output="screen">
+  <param name="serial_port"         type="string" value="/dev/ttyUSB1"/>  
+  <param name="serial_baudrate"     type="int"    value="256000"/><!--A3 -->
+  <param name="frame_id"            type="string" value="laser"/>
+  <param name="inverted"            type="bool"   value="false"/>
+  <param name="angle_compensate"    type="bool"   value="true"/>
+  <param name="scan_mode"           type="string" value="Sensitivity"/>
+  </node>
+
+ 
+  <node name="laneDetection0914" pkg="car" type="laneDetection0914.py" output="screen">
+  </node>
+
+  <node name="laserDetection0915" pkg="car" type="laserDetection0915.py" output="screen">
+  </node>
+
+  <node name="boardDetection" pkg="car" type="boardDetection.py" output="screen">
+  </node>
+
+  <node name="crossDetection2" pkg="car" type="crossDetection2.py" output="screen">
+  </node>
+  <node name="servoNode" pkg="car" type="servoNode.py" output="screen">
+  </node>
+
+
+</launch>

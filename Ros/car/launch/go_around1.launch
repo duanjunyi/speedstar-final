@@ -1,0 +1,11 @@
+<launch>   
+  <node name="serial_port_server_node" pkg="bluetooth_bridge" type="serial_port_server_node.py" output="screen">
+  </node>
+
+  <node name="lane_detection_wzy915" pkg="car" type="lane_detection_2020V7.py" output="screen">
+  </node>
+
+  <node name="socket" pkg="car" type="talker" output="screen">
+  </node>
+
+</launch>

@@ -1,0 +1,16 @@
+<launch>   
+  <node name="laneDetection0914" pkg="car" type="laneDetection0914.py" output="screen">
+  </node>
+
+  <node name="laserDetection0915" pkg="car" type="laserDetection0915.py" output="screen">
+  </node>
+
+  <node name="boardDetection" pkg="car" type="boardDetection.py" output="screen">
+  </node>
+
+  <node name="crossDetection2" pkg="car" type="crossDetection2.py" output="screen">
+  </node>
+  <node name="servoNode" pkg="car" type="servoNode.py" output="screen">
+  </node>
+
+</launch>

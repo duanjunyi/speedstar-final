@@ -1,0 +1,131 @@
+#include "ros/ros.h"
+#include "std_msgs/Int32.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+#define portnumber 7777
+/**
+ * This tutorial demonstrates simple sending of messages over the ROS system.
+ */
+int main(int argc, char** argv)
+{
+    int sockfd;
+    char buffer[1024];
+    struct sockaddr_in server_addr;
+    struct hostent* host;
+    int nbytes;
+    int cnt_while = 0;
+    int cnt_red_stop = 0;
+    int cnt_green_go = 0;
+    int cnt_yellow_back = 0;
+    int cnt_spare = 0;
+    int cnt_speed_limited = 0;
+    int cnt_speed_unlimited = 0;
+    int cnt_pedestrian_crossing = 0;
+    char* echo_host = "192.168.2.111";
+    ros::init(argc, argv, "talker");
+    ros::NodeHandle n;
+    ros::Publisher chatter_puba = n.advertise<std_msgs::Int32>("/traffic_light", 1000);
+    ros::Publisher chatter_pubb = n.advertise<std_msgs::Int32>("/traffic_signs", 1000);
+    ros::Rate loop_rate(8);
+    std_msgs::Int32 msg_traffic_light;
+    std_msgs::Int32 msg_traffic_signs;
+    while (ros::ok())
+    {
+        if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) // AF_INET:Internet;SOCK_STREAM:TCP
+        {
+            fprintf(stderr, "Socket Error:%s\a\n", strerror(errno));
+            //   exit(11);
+        }
+        /* 客户程序填充服务端的资料 */
+        bzero(&server_addr, sizeof(server_addr)); // 初始化,置0
+        server_addr.sin_family = AF_INET;        // IPV4
+        server_addr.sin_port = htons(portnumber); // (将本机器上的short数据转化为网络上的short数据)端口号
+        //  server_addr.sin_addr=*((struct in_addr *)host->h_addr); // IP地址
+        server_addr.sin_addr.s_addr = inet_addr(echo_host);
+        /* 客户程序发起连接请求 */
+        //   for(int k=0;k<1000;k++)
+        //    buffer[k]="/0";
+        if (connect(sockfd, (struct sockaddr*) (&server_addr), sizeof(struct sockaddr)) == -1)
+        {
+            fprintf(stderr, "Connect Error:%s\a\n", strerror(errno));
+            //     exit(12);
+        }
+        if((nbytes = read(sockfd, buffer, 1000)) == -1)
+        {
+            fprintf(stderr, "Read Error:%s\n", strerror(errno));
+            //  exit(1);
+        }
+        buffer[nbytes] = '\0';
+        printf("Server received %s\n", buffer);
+        close(sockfd);
+        cnt_while++;
+        if(buffer[0] == '1')
+            cnt_speed_limited++;
+        if(buffer[1] == '1')
+            cnt_speed_unlimited++;
+        if(buffer[2] == '1')
+            cnt_green_go++;
+        if(buffer[3] == '1')
+            cnt_yellow_back++;
+        if(buffer[4] == '1')
+            cnt_pedestrian_crossing++;
+        if(buffer[2] == '0' && buffer[3] == '0' && buffer[5] == '0')
+            cnt_spare++;
+        if(buffer[5] == '1')
+            cnt_red_stop++;
+        if(cnt_red_stop >= 4)
+        {
+            msg_traffic_light.data = 1; //red light
+        }
+        else if(cnt_green_go >= 4)
+        {
+            msg_traffic_light.data = 2; //green light
+        }
+        else if(cnt_yellow_back >= 4)
+        {
+            msg_traffic_light.data = 3; //yellow light
+        }
+        else if(cnt_spare >= 4)
+        {
+            msg_traffic_light.data = 0; //spare time send 0
+        }
+        if(cnt_speed_limited >= 4)
+        {
+            msg_traffic_signs.data = 1; //limited speed
+        }
+        if(cnt_speed_unlimited >= 4)
+        {
+            msg_traffic_signs.data = 2; //unlimited speed
+        }
+        if(cnt_pedestrian_crossing >= 1)
+        {
+            msg_traffic_signs.data = 3; //crossing
+        }
+        if(cnt_while == 8)
+        {
+            cnt_while = 0;
+            cnt_red_stop = 0;
+            cnt_green_go = 0;
+            cnt_yellow_back = 0;
+            cnt_speed_limited = 0;
+            cnt_speed_unlimited = 0;
+            cnt_pedestrian_crossing = 0;
+            cnt_spare = 0;
+        }
+        ROS_INFO("the traffic_light=%d", msg_traffic_light.data);
+        ROS_INFO("the traffic_signs=%d", msg_traffic_signs.data);
+        chatter_puba.publish(msg_traffic_light);
+        chatter_pubb.publish(msg_traffic_signs);
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
+    return 0;
+}
