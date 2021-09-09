@@ -1,7 +1,11 @@
 from npsocket import NumpySocket
 import cv2
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent
+video_path = BASE_DIR / 'videos/demo.mp4'
 
-cap = cv2.VideoCapture('videos/demo1.mp4')
+cap = cv2.VideoCapture(str(video_path))
+
 sock_sender = NumpySocket()
 sock_sender.initialize_sender('127.0.0.1', 9999)
 

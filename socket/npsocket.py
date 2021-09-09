@@ -1,8 +1,6 @@
 import socket
 import numpy as np
 import pickle
-import struct
-
 
 class NumpySocket():
     def __init__(self):
@@ -34,8 +32,7 @@ class NumpySocket():
         data = pickle.dumps(np_array)
 
         # Send message length first
-        message_size = struct.pack("L", len(data))  ### format strings (L: unsigned long)
-
+        message_size = str(len(data)).ljust(16).encode()
         # Then data
         self.socket.sendall(message_size + data)
 
@@ -52,7 +49,7 @@ class NumpySocket():
         self.socket.bind((self.address, self.port))
         print('Socket bind complete')
         self.socket.listen()
-        self.payload_size = struct.calcsize("L")  ### CHANGED
+        self.payload_size = 16  ### CHANGED
         self.data = b''
         self.conn_state = False  # 连接状态
 
@@ -78,13 +75,19 @@ class NumpySocket():
                 self.conn_state = False
                 return self.conn_state, np.array(0)
 
-        packed_msg_size = self.data[:self.payload_size]
+        msg_size = int(self.data[:self.payload_size].decode())
         self.data = self.data[self.payload_size:]
-        msg_size = struct.unpack("L", packed_msg_size)[0]
 
         # Retrieve all data based on message size
+        wait_times = 0
         while len(self.data) < msg_size:
             self.data += self.conn.recv(4096)
+            wait_times += 1
+            if(wait_times > 10000): # 连接断开，重新开始accept
+                print("Socket break...")
+                self.data =  b''
+                self.conn_state = False
+                return self.conn_state, np.array(0)
 
         frame_data = self.data[:msg_size]
         self.data = self.data[msg_size:]

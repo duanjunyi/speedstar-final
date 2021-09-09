@@ -1,3 +1,6 @@
+"""
+本地socket服务器，接收来自Hilens的视频，保存在out_videos/中
+"""
 import cv2
 from npsocket import NumpySocket
 import datetime
@@ -7,7 +10,7 @@ SAVE_DIR = BASE_DIR / 'out_videos'
 SAVE_DIR.mkdir(exist_ok=True)
 
 sock_receiver = NumpySocket()
-sock_receiver.initalize_receiver('127.0.0.1', 9999)
+sock_receiver.initalize_receiver('', 7777)
 
 def out_name():
     return str(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')) + '.mp4'
@@ -26,6 +29,7 @@ if __name__ == '__main__':
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             height, width = frame.shape[:2]
             out_writer = cv2.VideoWriter(out_file, fourcc, 24, (width, height), True)
+            print('Start Recording')
 
         if conn_state: # 写入帧
             cv2.imshow('frame', frame)
@@ -41,9 +45,9 @@ if __name__ == '__main__':
                 pass
 
             # 是否继续等待下一个视频
-            # c = input("Continue? ([y]/n)? ")
-            # if c in ['n', 'N']:
-            #     exit()
+            c = input("Continue? ([y]/n)? ")
+            if c in ['n', 'N']:
+                exit()
 
 
 
