@@ -1,4 +1,6 @@
 #! /usr/bin/python3.7
+# -*- coding: utf-8 -*-
+
 #本例子直接拉取摄像头画面帧，然后在上面打印Hollo World，最后输出到显示器
 import hilens
 import cv2

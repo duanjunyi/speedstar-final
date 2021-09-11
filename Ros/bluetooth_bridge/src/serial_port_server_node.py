@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
- 
- 
+
 import rospy
 import sys
 import signal
 import std_msgs.msg
 import serial
-import time 
-import threading 
+import time
+import threading
 from std_msgs.msg import Int32
 from std_msgs.msg import String
 import struct
@@ -42,13 +41,6 @@ topic_batteryVoltage = "/vcu/batteryVoltage"
 topic_motorTemperature = "/vcu/motorTemperature"
 
 topic_from_vcu="/bluetooth/send"
-#topic_direction = "/bluetooth/received/direction"        # Received data from Bluetooth will
-#topic_speed = "/bluetooth/received/speed"        # be published to this topic.
-#topic_gear = "/bluetooth/received/gear"
-#topic_manual = "/bluetooth/received/manual"
-#topic_beep = "/bluetooth/received/beep"
-
-
 
 def sigint_handler(signal, frame):
     print(" ")
@@ -60,21 +52,21 @@ def sigint_handler(signal, frame):
     sys.exit(0)
 
 #serial init
-node_name='serial_port' 
+node_name='serial_port'
 serialPort = "/dev/ttyUSB0"
 baudRate = 1000000
 ser = serial.Serial(serialPort, baudRate)
-#ser = serial.Serial(serialPort, baudRate, timeout=0.4)
 print("serial port is %s ,baudRate is %d" % (serialPort, baudRate))
 time.sleep(1)
 signal.signal(signal.SIGINT, sigint_handler)
-#default          head,direction,speed,gear,manul,beef,crc,bit
+
+#default          head,direction,speed,gear,manul,beep,crc,bit
 #auto_driver_data=[0xaa,50       ,0    ,3   ,0    ,0   ,0  , 0]
 auto_driver_data=chr(0xaa)+chr(50)+chr(0)+chr(3)+chr(0)+chr(0)+chr(0)+chr(0)
 
 flag_manul=0
- 
-#callback relate to subscriber 
+
+#--- callback relate to subscriber
 def callback_bluetooth(message):
     global flag_manul
     #print("bluetooth_data:",message.data)
@@ -83,12 +75,13 @@ def callback_bluetooth(message):
         #print "Received from bluetooth: header=%d,direction=%d,speed=%d,gear==%d,manual=%d,beep=%d,crc=%d" %(ord(message.data[0]),ord(message.data[1]),ord(message.data[2]),ord(message.data[3]),ord(message.data[4]),ord(message.data[5]),ord(message.data[6]))
         ser.write(message.data[0:8])
         ser.flush()
+
 def callback_direction(message):
     global flag_manul
     global auto_driver_data
     #print("auto_driver_Direction:",message.data,chr(message.data))
    # auto_driver_data[1]=chr(message.data)
-    auto_driver_data =auto_driver_data[0]+chr(message.data)+auto_driver_data[2:] 
+    auto_driver_data =auto_driver_data[0]+chr(message.data)+auto_driver_data[2:]
     crc=chr(ord(auto_driver_data[0])^ord(auto_driver_data[1])^ord(auto_driver_data[2])^ord(auto_driver_data[3])^ord(auto_driver_data[4])^ord(auto_driver_data[5]))
     auto_driver_data = auto_driver_data[0:6]+crc+auto_driver_data[7:]
     if flag_manul==0:
@@ -101,31 +94,33 @@ def callback_speed(message):
     global auto_driver_data
     #print("auto_driver_speed:",message)
 #    auto_driver_data[2]=str(message.data)
-    auto_driver_data =auto_driver_data[0:2]+chr(message.data)+auto_driver_data[3:] 
+    auto_driver_data =auto_driver_data[0:2]+chr(message.data)+auto_driver_data[3:]
     crc=chr(ord(auto_driver_data[0])^ord(auto_driver_data[1])^ord(auto_driver_data[2])^ord(auto_driver_data[3])^ord(auto_driver_data[4])^ord(auto_driver_data[5]))
     auto_driver_data = auto_driver_data[0:6]+crc+auto_driver_data[7:]
     if flag_manul==0:
         #print("Receiived from bluetooth: header=%d,direction=%d,speed=%d,gear==%d,manual=%d,beep=%d,crc=%d" %(ord(auto_driver_data[0]),ord(auto_driver_data[1]),ord(auto_driver_data[2]),ord(auto_driver_data[3]),ord(auto_driver_data[4]),ord(auto_driver_data[5]),ord(auto_driver_data[6])))
         ser.write(auto_driver_data[0:8])
         ser.flush()
+
 def callback_gear(message):
     global flag_manul
     global auto_driver_data
     #print("auto_driver_gear:",message.data)
  #   auto_driver_data[3]=str(message.data)
-    auto_driver_data =auto_driver_data[0:3]+chr(message.data)+auto_driver_data[4:] 
+    auto_driver_data =auto_driver_data[0:3]+chr(message.data)+auto_driver_data[4:]
     crc=chr(ord(auto_driver_data[0])^ord(auto_driver_data[1])^ord(auto_driver_data[2])^ord(auto_driver_data[3])^ord(auto_driver_data[4])^ord(auto_driver_data[5]))
     auto_driver_data = auto_driver_data[0:6]+crc+auto_driver_data[7:]
     if flag_manul==0:
         #print("Received from bluetooth: header=%d,direction=%d,speed=%d,gear==%d,manual=%d,beep=%d,crc=%d" %(ord(auto_driver_data[0]),ord(auto_driver_data[1]),ord(auto_driver_data[2]),ord(auto_driver_data[3]),ord(auto_driver_data[4]),ord(auto_driver_data[5]),ord(auto_driver_data[6])))
         ser.write(auto_driver_data[0:8])
         ser.flush()
+
 def callback_beep(message):
     global flag_manul
     global auto_driver_data
     #print("auto_driver_beep:",message.data)
   #  auto_driver_data[5]=str(message.data)
-    auto_driver_data =auto_driver_data[0:5]+chr(message.data)+auto_driver_data[6:] 
+    auto_driver_data =auto_driver_data[0:5]+chr(message.data)+auto_driver_data[6:]
     crc=chr(ord(auto_driver_data[0])^ord(auto_driver_data[1])^ord(auto_driver_data[2])^ord(auto_driver_data[3])^ord(auto_driver_data[4])^ord(auto_driver_data[5]))
     auto_driver_data = auto_driver_data[0:6]+crc+auto_driver_data[7:]
     if flag_manul==0:
@@ -135,11 +130,11 @@ def callback_beep(message):
 
 def thread_job():
     rospy.spin()
- 
- 
+
+
 def listener():
     #node init
-    rospy.init_node(node_name, anonymous=True)  
+    rospy.init_node(node_name, anonymous=True)
     print("init_node:",node_name)
     #publish topic
     vcu_data_pub = rospy.Publisher(topic_from_vcu, String, queue_size = 10)
@@ -164,11 +159,11 @@ def listener():
     #subscriber topic
     rospy.Subscriber(topic_from_bluetooth, String, callback_bluetooth)
     #rospy.Subscriber(topic_from_auto_driver, String, callback_auto_driver)
-    rospy.Subscriber(topic_from_auto_driver_direction, Int32, callback_direction) 
-    rospy.Subscriber(topic_from_auto_driver_speed, Int32, callback_speed) 
-    rospy.Subscriber(topic_from_auto_driver_gear, Int32, callback_gear) 
-    #rospy.Subscriber(topic_manual, Int32, callback_manual) 
-    rospy.Subscriber(topic_from_auto_driver_beef, Int32, callback_beep) 
+    rospy.Subscriber(topic_from_auto_driver_direction, Int32, callback_direction)
+    rospy.Subscriber(topic_from_auto_driver_speed, Int32, callback_speed)
+    rospy.Subscriber(topic_from_auto_driver_gear, Int32, callback_gear)
+    #rospy.Subscriber(topic_manual, Int32, callback_manual)
+    rospy.Subscriber(topic_from_auto_driver_beef, Int32, callback_beep)
     #
     add_thread = threading.Thread(target = thread_job)
     add_thread.start()
@@ -239,7 +234,7 @@ def listener():
 
 if __name__ == '__main__':
     listener()
- 
- 
+
+
 ########################
- 
+

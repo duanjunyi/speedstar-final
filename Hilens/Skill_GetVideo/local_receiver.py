@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 本地socket服务器，接收来自Hilens的视频，保存在out_videos/中
 """
