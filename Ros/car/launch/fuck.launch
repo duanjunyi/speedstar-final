@@ -1,4 +1,0 @@
-<launch>
-  <node name="servoNode" pkg="car" type="servoNode.py" output="screen">
-  </node>
-</launch>

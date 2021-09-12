@@ -14,8 +14,9 @@ import matplotlib.pyplot as plt
 frameWidth = 1280  # 宽
 frameHeight = 720  # 长
 frameFps = 30  # 帧率
-camMat = []  # 相机校正矩阵
-camDistortion = []  # 相机失真矩阵
+camMat = np.array([[6.678151103217834e+02, 0, 6.430528691213178e+02],
+                   [0, 7.148758960098705e+02, 3.581815819255082e+02], [0, 0, 1]])  # 相机校正矩阵
+camDistortion = np.array([[-0.056882894892153, 0.002184364631645, -0.002836821379133, 0, 0]])  # 相机失真矩阵
 
 
 # 透视变换
@@ -35,7 +36,7 @@ minpix = 25  # 最小连续像素，小于该长度的被舍弃以去除噪声�
 
 # 距离映射
 x_cmPerPixel = 90 / 665.00  # x方向上一个像素对应的真实距离 单位：cm
-y_cmPerPixel = 81 / 680.00  # y方向上一个像素对应的真是距离 单位：cm
+y_cmPerPixel = 81 / 680.00  # y方向上一个像素对应的真实距离 单位：cm
 roadWidth = 80  # 道路宽度 单位：cm
 y_offset = 50.0  # 由于相机位置较低，识别到的车道线距离车身较远，不是当前位置，定义到的车道线与车身距离 单位：cm<no usage>
 cam_offset = 18.0  # 相机中心与车身中轴线的距离 单位：cm
@@ -68,13 +69,13 @@ class camera:
 
 
             # 预处理，图像增强
-            # undistimg = cv2.undistort(img, self.camMat, self.camDistortion, None, self.camMat)  # 校正畸变图像
             mask = np.zeros_like(img)  # 创建遮罩
             cv2.rectangle(mask, (0, int(img.shape[0] * (1 - roiXRatio))), (img.shape[1], img.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
             segment = cv2.bitwise_and(img, mask)  # 取出遮罩范围
+            undistimg = cv2.undistort(segment, self.camMat, self.camDistortion, None, self.camMat)  # 校正畸变图像
             kernel = np.ones(kerSz, np.uint8)  # 定义膨胀与腐蚀的核
             # gray_Blur = cv2.dilate(gray_Blur, kernel, iterations = 1)  # 膨胀
-            gray_Blur = cv2.erode(segment, kernel, iterations=1)  # 腐蚀
+            gray_Blur = cv2.erode(undistimg, kernel, iterations=1)  # 腐蚀
             origin_thr = np.zeros_like(gray_Blur)
             origin_thr[(gray_Blur >= grayThr)] = 255  # 二值化
             binary_warped = cv2.warpPerspective(origin_thr, MWarp, (gray_Blur.shape[1], gray_Blur.shape[0]),
@@ -169,9 +170,6 @@ class camera:
             cv2.putText(result, center_text, (100, 150), font, 1, (255, 255, 255), 2)
             cv2.imshow('result', result)
             cv2.waitKey(1)
-
-
-
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ SAVE_DIR = BASE_DIR / 'out_videos'
 SAVE_DIR.mkdir(exist_ok=True)
 
 sock_receiver = NumpySocket()
-sock_receiver.initalize_receiver('127.0.0.1', 9999)
+sock_receiver.initalize_receiver('192.168.2.1', 7777)
 
 def out_name():
     return str(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')) + '.mp4'
