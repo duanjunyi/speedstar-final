@@ -67,31 +67,31 @@ def callback_direction(message):
     driver_data[1] = chr(message.data)    # update global driver_data
     driver_data[6] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(driver_data[0:])
+        ser.write(''.join(driver_data))
         ser.flush()
 
 def callback_speed(message):
     driver_data[2] = chr(message.data)    # update global driver_data
     driver_data[6] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(driver_data[0:])
+        ser.write(''.join(driver_data))
         ser.flush()
 
 def callback_mode(message):
     driver_data[3] = chr(message.data)    # update global driver_data
     driver_data[6] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(driver_data[0:])
+        ser.write(''.join(driver_data))
         ser.flush()
 
 def callback_beep(message):
     driver_data[5] = chr(message.data)    # update global driver_data
     driver_data[6] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(driver_data[0:])
+        ser.write(''.join(driver_data))
         ser.flush()
 
-def main():
+def main(hz=100):
     global ser
     #--- node init
     rospy.init_node('serial_port', anonymous=True)
@@ -111,7 +111,7 @@ def main():
     ros_spin = threading.Thread(target = rospy.spin)
     ros_spin.start()
 
-    rate = rospy.Rate(1000)
+    rate = rospy.Rate(hz)
     count=0
     while not rospy.is_shutdown():
         try:
@@ -135,6 +135,6 @@ def main():
         rate.sleep()
 
 if __name__ == '__main__':
-    main()
+    main(hz=100)
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import time
 import rospy
 import numpy as np
 import math
@@ -40,7 +40,7 @@ class Driver():
         self.mode_pub       = rospy.Publisher("/auto_driver/send/mode", Int32, queue_size=10)
         self.beep_pub      = rospy.Publisher("/auto_driver/send/beep", Int32, queue_size=10)
 
-        self.sensor_sub    = rospy.Subscriber('chatter', Sensors, self.sensors_callback)
+        self.sensor_sub    = rospy.Subscriber('/vcu', Sensors, self.sensors_callback)
 
         self.cache_size = cache_size
         self.sensor_cache = [Sensors(), ] * self.cache_size
@@ -49,6 +49,8 @@ class Driver():
 
         self.ros_spin = threading.Thread(target = rospy.spin)
         self.ros_spin.start()
+        time.sleep(2)
+
 
     #--- 设置
     def set_direction(self, x):
@@ -66,6 +68,10 @@ class Driver():
                 rospy.loginfo("[Driver]: set speed to %d" % x )
 
     def set_mode(self, x):
+        """ [1D, 2N, 3P, 4R] """
+        if isinstance(x, str):
+            mode_dict = {'D':1, 'N':2, 'P':3, 'R':4}
+            x = mode_dict.get(x, default=0)
         assert x>=1 and x<=4, 'mode must in [1, 4]'
         if not rospy.is_shutdown():
             self.mode_pub.publish(x)
