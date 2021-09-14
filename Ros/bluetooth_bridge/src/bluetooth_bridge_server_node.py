@@ -67,29 +67,6 @@ class Application:
         # Starting the node
         rospy.init_node(node_name, anonymous=False)
 
-        # Getting parameters
-        #self.input_topic  = rospy.get_param("~send_topic", self.input_topic)
-
-        #self.output_topic_direction = rospy.get_param("~recv_topic", self.output_topic_direction)
-        #self.output_topic_speed = rospy.get#self.direction#self.direction_param("~recv_topic", self.output_topic_speed)
-        #self.output_topic_gear = rospy.get_param("~recv_topic", self.output_topic_gear)
-        #self.output_topic_manual = rospy.get_param("~recv_topic", self.output_topic_manual)
-        #self.output_topic_beep = rospy.get_param("~recv_topic", self.output_topic_beep)
-
-        #self.status_topic = rospy.get_param("~status_topic", self.status_topic)
-        #self.bt_channel   = rospy.get_param("~rfcomm_channel", self.bt_channel)
-
-        #print TAG, "param: input_topic  =", self.input_topic
-
-        #print TAG, "param: output_topic_direction =", self.output_topic_direction
-
-        #print TAG, "param: output_topic_speed =", self.output_topic_speed
-        #print TAG, "param: output_topic_gear =", self.output_topic_gear
-        #print TAG, "param: output_topic_manual =", self.output_topic_manual
-        #print TAG, "param: output_topic_beep =", self.output_topic_beep
-        #print TAG, "param: status_topic =", self.status_topic
-        #print TAG, "param: bt_channel   =", self.bt_channel
-
         # Subscribers
         self.sub        = rospy.Subscriber(self.input_topic, String, self.send_callback)
 

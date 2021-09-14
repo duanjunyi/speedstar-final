@@ -23,7 +23,7 @@ topic_control_beep      = "/auto_driver/send/beep"
 
 """ pub topics """
 # sensor msg
-topic_sensors   = '/vcu'
+topic_sensors  = '/vcu'  # 传感器数据topic
 
 # raw data from vcu, send to bluetooth
 topic_vcu_data = "/bluetooth/send"
