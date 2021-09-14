@@ -76,7 +76,7 @@ class camera:
     def __init__(self):
         self.camMat = camMat   # 相机校正矩阵
         self.camDistortion = camDistortion  # 相机失真矩阵
-        self.cap = cv2.VideoCapture(str(BASE_DIR / 'challenge_video3.mp4'))  # 读入视频
+        self.cap = cv2.VideoCapture(str(BASE_DIR / 'challenge_video2.mp4'))  # 读入视频
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
         self.cap.set(cv2.CAP_PROP_FPS, frameFps)  # 设置读入帧率
