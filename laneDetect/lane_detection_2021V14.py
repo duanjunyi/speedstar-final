@@ -28,17 +28,15 @@ MWarp = cv2.getPerspectiveTransform(src_points, dst_points)  # 透视变换矩�
 # 视觉处理
 kerSz = (3, 3)  # 膨胀与腐蚀核大小
 grayThr = 125  # 二值化阈值
-roiRatio = 3/5  # 遮罩范围，以上方为起始点，比例定义终止位置
+roiXRatio = 3/5  # 统计x方向上histogram时选取的y轴坐标范围，以下方底边为起始点，比例定义终止位置
 nwindows = 10  # 窗的数目
 window_width = 200  # 窗的宽度
-minpix = 20  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
-winThr = 3  # 最小有效窗数，只有大于此数值才认为该车道线有效
+minpix = 25  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
 
 
 # 距离映射
-x_cmPerPixel = 90 / 665.00  # x方向上一个像素对应的真实距离 单位：cm (注意：是透视变换后像素与实际距离的比例)
+x_cmPerPixel = 90 / 665.00  # x方向上一个像素对应的真实距离 单位：cm
 y_cmPerPixel = 81 / 680.00  # y方向上一个像素对应的真实距离 单位：cm
-lane_cmPerPixel = x_cmPerPixel  # 车道线内部一个像素对应的真实距离 单位：cm
 roadWidth = 80  # 道路宽度 单位：cm
 y_offset = 50.0  # 由于相机位置较低，识别到的车道线距离车身较远，不是当前位置，定义到的车道线与车身距离 单位：cm<no usage>
 cam_offset = 18.0  # 相机中心与车身中轴线的距离 单位：cm
@@ -57,7 +55,8 @@ class camera:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
         self.cap.set(cv2.CAP_PROP_FPS, frameFps)  # 设置读入帧率
-        self.lane_cmPerPixel = lane_cmPerPixel  # 车道线内部一个像素对应的真实距离 单位：cm
+
+        #       self.cam_cmd.linear.x = -0.85
 
 
     def __del__(self):
@@ -70,9 +69,8 @@ class camera:
 
 
             # 预处理，图像增强
-            '''
             mask = np.zeros_like(img)  # 创建遮罩
-            cv2.rectangle(mask, (0, int(img.shape[0] * (1 - roiRatio))), (img.shape[1], img.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
+            cv2.rectangle(mask, (0, int(img.shape[0] * (1 - roiXRatio))), (img.shape[1], img.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
             segment = cv2.bitwise_and(img, mask)  # 取出遮罩范围
             undistimg = cv2.undistort(segment, self.camMat, self.camDistortion, None, self.camMat)  # 校正畸变图像
             kernel = np.ones(kerSz, np.uint8)  # 定义膨胀与腐蚀的核
@@ -82,36 +80,19 @@ class camera:
             origin_thr[(gray_Blur >= grayThr)] = 255  # 二值化
             binary_warped = cv2.warpPerspective(origin_thr, MWarp, (gray_Blur.shape[1], gray_Blur.shape[0]),
                                                 cv2.INTER_LINEAR)  # 透视变换
-            histogram_x = np.sum(binary_warped[int(binary_warped.shape[0] * roiRatio):, :], axis=0)  # 计算x方向直方图
-            '''
-
-
-            grayimg = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)  # 多通道变为单通道
-            _, thrimg = cv2.threshold(grayimg, grayThr, 255, cv2.THRESH_BINARY)
-            mask = np.zeros_like(thrimg)  # 创建遮罩
-            cv2.rectangle(mask, (0, int(grayimg.shape[0] * roiRatio)), (grayimg.shape[1], grayimg.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
-            segment = cv2.bitwise_and(grayimg, mask)  # 取出遮罩范围
-            undistimg = cv2.undistort(segment, self.camMat, self.camDistortion, None, self.camMat)  # 校正畸变图像
-            kernel = np.ones(kerSz, np.uint8)  # 定义膨胀与腐蚀的核
-            # gray_Blur = cv2.dilate(gray_Blur, kernel, iterations = 1)  # 膨胀
-            erodimg = cv2.erode(undistimg, kernel, iterations=1)  # 腐蚀
-            binary_warped = cv2.warpPerspective(erodimg, MWarp, (erodimg.shape[1], erodimg.shape[0]),
-                                                cv2.INTER_LINEAR)  # 透视变换
-            histogram_x = np.sum(binary_warped[int(binary_warped.shape[0] * roiRatio):, :], axis=0)  # 计算x方向直方图
+            histogram_x = np.sum(binary_warped[int(binary_warped.shape[0] * roiXRatio):, :], axis=0)  # 计算x方向直方图
 
 
             # 滑窗识别车道线
             midpoint = int(histogram_x.shape[0] / 2)  # x方向中点，用来判断左右
             #  nwindows = 10  # 窗的数目
-            window_height = int(binary_warped.shape[0] / nwindows)  # 窗的高度
+            window_height = int(binary_warped.shape[0] * (1 - roiXRatio) / nwindows)  # 窗的高度
             #  window_width = 200  # 窗的宽度
             nonzero = binary_warped.nonzero()  # 非零像素索引
             nonzeroy = np.array(nonzero[0])  # 非零像素y坐标
             nonzerox = np.array(nonzero[1])  # 非零像素x坐标
-            left_base = np.argmax(histogram_x[:midpoint])  # 定义左车道线的基点
-            right_base = np.argmax(histogram_x[midpoint:]) + midpoint  # 定义右车道线的基点
-            left_windows = 0  # 左车道线有效窗数
-            right_windows = 0  # 右车道线有效窗数
+            left_base = np.argmax(histogram_x[:midpoint]) / 3  # 定义左车道线的基点
+            right_base = int(np.argmax(histogram_x[midpoint:]) / 3) + midpoint  # 定义右车道线的基点
             left_current = left_base  # 左车道线当前窗x中心位置
             right_current = right_base  # 右车道线当前窗x中心位置
             #  minpix = 25  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
@@ -119,25 +100,12 @@ class camera:
             right_inds = []  # 所有被识别为右车道线的像素索引
 
             for window in range(nwindows):
-                '''
-                ---------------------------------->x正向
-                |
-                |
-                |
-                |
-                |
-                |
-                |
-                |
-                v
-                y正向
-                '''
-                win_y_low = binary_warped.shape[0] - (window + 1) * window_height  # 窗的上方坐标
-                win_y_high = binary_warped.shape[0] - window * window_height  # 窗的下方坐标
+                win_y_low = binary_warped.shape[0] - (window + 1) * window_height  # 窗的下方坐标
+                win_y_high = binary_warped.shape[0] - window * window_height  # 窗的上方坐标
                 win_x_left_low = int(left_current - window_width / 2)  # 左车道线窗的左方坐标
                 win_x_left_high = int(left_current + window_width / 2)  # 左车道线窗的右方坐标
                 win_x_right_low = int(right_current - window_width / 2)  # 右车道线窗的左方坐标
-                win_x_right_high = int(right_current + window_width / 2)  # 右车道线窗的右方坐标
+                win_x_right_high = int(right_current + window_width / 2) # 右车道线窗的右方坐标
                 cv2.rectangle(binary_warped, (win_x_left_low, win_y_low), (win_x_left_high, win_y_high),
                               (255, 255, 255), 2)  # 在图中画出左车道线的窗
                 cv2.rectangle(binary_warped, (win_x_right_low, win_y_low), (win_x_right_high, win_y_high),
@@ -150,10 +118,8 @@ class camera:
                 right_inds.append(good_right_inds)
                 if len(good_left_inds) > minpix:
                     left_current = int(np.mean(nonzerox[good_left_inds]))  # 更新左车道线窗的x中心位置
-                    left_windows += 1  # 被记为有效窗
                 if len(good_right_inds) > minpix:
                     right_current = int(np.mean(nonzerox[good_right_inds]))  # 更新右车道线窗的x中心位置
-                    right_windows += 1  # 被记为有效窗
             cv2.imshow('binary_warped', binary_warped)  # 显示每一帧窗的位置
             cv2.waitKey(1)
             left_inds = np.concatenate(left_inds)
@@ -164,7 +130,7 @@ class camera:
             righty = nonzeroy[right_inds]  # 右车道线y坐标
 
 
-            # 拟合（目前两条线都拟合以方便后续可视化，如果HiLens计算资源不够的话可以改写代码只拟合一条线）
+            # 拟合
             left_fit = np.polyfit(lefty, leftx, 2)  # 左车道拟合
             right_fit = np.polyfit(righty, rightx, 2)  # 右车道拟合
             y = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])  # 定义自变量
@@ -177,28 +143,16 @@ class camera:
                             / np.absolute(2*left_fit_real[0])  # 左车道线曲率半径
             right_curverad = ((1 + (2*right_fit_real[0]*ymax*y_cmPerPixel + right_fit_real[1])**2)**1.5)\
                              / np.absolute(2*right_fit_real[0])  # 右车道线曲率半径
-            if (left_windows >= winThr) & (right_windows >= winThr):  # 两条车道线均有效
-                curverad = (left_curverad + right_curverad) / 2  # 整体曲率半径
-                lane_width = np.absolute(leftx_fit[ymax] - rightx_fit[ymax])  # 车道线的像素宽度
-                self.lane_cmPerPixel = roadWidth / lane_width  # 更新车道线的像素比例
-                cen_pos = ((leftx_fit[ymax] + rightx_fit[ymax]) * self.lane_cmPerPixel) / 2.0  # 车道中心线位置
-                veh_pos = binary_warped.shape[1] * self.lane_cmPerPixel / 2.0  # 小车位置，目前定义为画面中心，但是摄像头与小车中轴线不一定重合，需要校准
-                distance_from_center = veh_pos - cen_pos  # 离中心距离，<0位于左边, >0位于右边
-            elif len(right_inds) > len(left_inds):  # 右车道线有效
-                curverad = right_curverad  # 取右车道线曲率半径
-                cen_pos = rightx_fit[ymax] * self.lane_cmPerPixel - roadWidth / 2   # 车道中心线位置
-                veh_pos = binary_warped.shape[1] * self.lane_cmPerPixel / 2.0
-                distance_from_center = veh_pos - cen_pos
-            else:  # 左车道线有效
-                curverad = left_curverad  # 取左车道线曲率半径
-                cen_pos = leftx_fit[ymax] * self.lane_cmPerPixel + roadWidth / 2  # 车道中心线位置
-                veh_pos = binary_warped.shape[1] * self.lane_cmPerPixel / 2.0
-                distance_from_center = veh_pos - cen_pos
+            curverad = (left_curverad + right_curverad) / 2  # 整体曲率半径
+            lane_width = np.absolute(leftx_fit[ymax] - rightx_fit[ymax])  # 车道线的像素宽度
+            lane_cmPerPixel = roadWidth / lane_width  # 车道线的像素比例
+            cen_pos = ((leftx_fit[ymax] + rightx_fit[ymax]) * lane_cmPerPixel) / 2.0  # 车道中心线位置
+            veh_pos = binary_warped.shape[1] * lane_cmPerPixel / 2.0  # 小车位置，目前定义为画面中心，但是摄像头与小车中轴线不一定重合，需要校准
+            distance_from_center = veh_pos - cen_pos  # 离中心距离，<0位于左边, >0位于右边
 
 
-            # 绘图显示(这部分内容在实际运行时可以删去)
-            warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
-            color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+            # 绘图显示
+            color_warp = np.zeros_like(binary_warped).astype(np.uint8)
             pts_left = np.array([np.transpose(np.vstack([leftx_fit, y]))])
             pts_right = np.array([np.flipud(np.transpose(np.vstack([rightx_fit, y])))])
             pts = np.hstack((pts_left, pts_right))
