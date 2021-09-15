@@ -30,8 +30,8 @@ kerSz = (3, 3)  # 膨胀与腐蚀核大小
 grayThr = 125  # 二值化阈值
 roiRatio = 3/5  # 遮罩范围，以上方为起始点，比例定义终止位置
 nwindows = 10  # 窗的数目
-window_width = 200  # 窗的宽度
-minpix = 20  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
+window_width = 150  # 窗的宽度
+minpix = 50  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
 winThr = 4  # 最小有效窗数，只有大于此数值才认为该车道线有效
 
 
@@ -102,6 +102,7 @@ class camera:
             #  minpix = 25  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
             left_inds = []  # 所有被识别为左车道线的像素索引
             right_inds = []  # 所有被识别为右车道线的像素索引
+            rect_result = binary_warped  # 新开一个图窗画图，避免在原图上画图对判断的干扰
 
             for window in range(nwindows):
                 '''
@@ -123,9 +124,9 @@ class camera:
                 win_x_left_high = int(left_current + window_width / 2)  # 左车道线窗的右方坐标
                 win_x_right_low = int(right_current - window_width / 2)  # 右车道线窗的左方坐标
                 win_x_right_high = int(right_current + window_width / 2)  # 右车道线窗的右方坐标
-                cv2.rectangle(binary_warped, (win_x_left_low, win_y_low), (win_x_left_high, win_y_high),
+                cv2.rectangle(rect_result, (win_x_left_low, win_y_low), (win_x_left_high, win_y_high),
                               (255, 255, 255), 2)  # 在图中画出左车道线的窗
-                cv2.rectangle(binary_warped, (win_x_right_low, win_y_low), (win_x_right_high, win_y_high),
+                cv2.rectangle(rect_result, (win_x_right_low, win_y_low), (win_x_right_high, win_y_high),
                               (255, 255, 255), 2)  # 在图中画出右车道线的窗
                 good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_x_left_low) & (
                         nonzerox < win_x_left_high)).nonzero()[0]  # 处在左车道线窗中的非零像素索引
@@ -139,7 +140,7 @@ class camera:
                 if len(good_right_inds) > minpix:
                     right_current = int(np.mean(nonzerox[good_right_inds]))  # 更新右车道线窗的x中心位置
                     right_windows += 1  # 被记为有效窗
-            cv2.imshow('binary_warped', binary_warped)  # 显示每一帧窗的位置
+            cv2.imshow('rect_result', rect_result)  # 显示每一帧窗的位置
             cv2.waitKey(1)
             left_inds = np.concatenate(left_inds)
             right_inds = np.concatenate(right_inds)
