@@ -32,7 +32,7 @@ roiRatio = 3/5  # 遮罩范围，以上方为起始点，比例定义终止位�
 nwindows = 10  # 窗的数目
 window_width = 200  # 窗的宽度
 minpix = 20  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
-winThr = 3  # 最小有效窗数，只有大于此数值才认为该车道线有效
+winThr = 4  # 最小有效窗数，只有大于此数值才认为该车道线有效
 
 
 # 距离映射
@@ -53,7 +53,7 @@ class camera:
     def __init__(self):
         self.camMat = camMat   # 相机校正矩阵
         self.camDistortion = camDistortion  # 相机失真矩阵
-        self.cap = cv2.VideoCapture('challenge_video.mp4')  # 读入视频
+        self.cap = cv2.VideoCapture('challenge_video2.mp4')  # 读入视频
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
         self.cap.set(cv2.CAP_PROP_FPS, frameFps)  # 设置读入帧率
@@ -70,27 +70,12 @@ class camera:
 
 
             # 预处理，图像增强
-            '''
-            mask = np.zeros_like(img)  # 创建遮罩
-            cv2.rectangle(mask, (0, int(img.shape[0] * (1 - roiRatio))), (img.shape[1], img.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
-            segment = cv2.bitwise_and(img, mask)  # 取出遮罩范围
-            undistimg = cv2.undistort(segment, self.camMat, self.camDistortion, None, self.camMat)  # 校正畸变图像
-            kernel = np.ones(kerSz, np.uint8)  # 定义膨胀与腐蚀的核
-            # gray_Blur = cv2.dilate(gray_Blur, kernel, iterations = 1)  # 膨胀
-            gray_Blur = cv2.erode(undistimg, kernel, iterations=1)  # 腐蚀
-            origin_thr = np.zeros_like(gray_Blur)
-            origin_thr[(gray_Blur >= grayThr)] = 255  # 二值化
-            binary_warped = cv2.warpPerspective(origin_thr, MWarp, (gray_Blur.shape[1], gray_Blur.shape[0]),
-                                                cv2.INTER_LINEAR)  # 透视变换
-            histogram_x = np.sum(binary_warped[int(binary_warped.shape[0] * roiRatio):, :], axis=0)  # 计算x方向直方图
-            '''
 
-
-            grayimg = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)  # 多通道变为单通道
-            _, thrimg = cv2.threshold(grayimg, grayThr, 255, cv2.THRESH_BINARY)
+            grayimg = cv2.cvtColor(img,cv2.COLOR_RGB2GRAY)  # 单通道化
+            _, thrimg = cv2.threshold(grayimg, grayThr, 255, cv2.THRESH_BINARY)  # 二值化
             mask = np.zeros_like(thrimg)  # 创建遮罩
-            cv2.rectangle(mask, (0, int(grayimg.shape[0] * roiRatio)), (grayimg.shape[1], grayimg.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
-            segment = cv2.bitwise_and(grayimg, mask)  # 取出遮罩范围
+            cv2.rectangle(mask, (0, int(thrimg.shape[0] * roiRatio)), (thrimg.shape[1], thrimg.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
+            segment = cv2.bitwise_and(thrimg, mask)  # 取出遮罩范围
             undistimg = cv2.undistort(segment, self.camMat, self.camDistortion, None, self.camMat)  # 校正畸变图像
             kernel = np.ones(kerSz, np.uint8)  # 定义膨胀与腐蚀的核
             # gray_Blur = cv2.dilate(gray_Blur, kernel, iterations = 1)  # 膨胀
