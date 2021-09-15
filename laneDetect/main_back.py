@@ -36,7 +36,7 @@ roiXRatio = 3/5  # 统计x方向上histogram时选取的y轴坐标范围，以�
 roiXBase = 0.3  # 统计左右初始窗的y轴范围
 nwindows = 15  # 窗的数目
 window_width = 200  # 窗的宽度
-minpix = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
+minpix = 250  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
 
 
 # 距离映射
@@ -81,104 +81,79 @@ class camera:
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
         self.cap.set(cv2.CAP_PROP_FPS, frameFps)  # 设置读入帧率
         self.kernal = np.ones(kerSz, np.uint8)  # 定义膨胀与腐蚀的核
-        self.win_w = window_width
-        self.win_h = int(frameHeight * roiXRatio // nwindows)
-        self.win_n = nwindows
-        self.l_lane_centers = np.zeros((self.win_n, 2)).astype(np.int32)  # 左车道线中心点，用于拟合
-        self.r_lane_centers = np.zeros((self.win_n, 2)).astype(np.int32)  # 右车道线中心点
-        self.l_flag = np.full((self.win_n, ), False, np.bool)
-        self.r_flag = np.full((self.win_n, ), False, np.bool)
-        self.minpix = minpix
-        self.show = True
-        self.first_frame = True
+        self.l_lane_centers = np.zeros((nwindows, 2)).astype(np.int32) # 左车道线中心点，用于拟合
+        self.r_lane_centers = np.zeros((nwindows, 2)).astype(np.int32) # 右车道线中心点
+        self.win_width = window_width
+        self.win_height = frameHeight * roiXRatio // nwindows
+        self.n_win = nwindows
 
     def __del__(self):
         self.cap.release()  # 释放摄像头
 
-    def init_lane_centers(self, img):
-        """ 输入第一帧经过预处理的图片，初始化 lane_centers """
-        self.first_frame = False
-        h, w = img.shape
-        histogram_x = np.sum(img[int(img.shape[0] * (1-roiXBase)):, :], axis=0)  # 计算 x方向直方图 [x,]
-        midpoint = int(histogram_x.shape[0] / 2)                        # x方向中点，用来判断左右
-        l_win_xc = int(np.argmax(histogram_x[:midpoint]))                  # 定义左车道线的基点
-        r_win_xc = int(np.argmax(histogram_x[midpoint:]) + midpoint)       # 定义右车道线的基点
-
-        for i in range(self.win_n):
-            win_yc = int(h - (i + 0.5) * self.win_h)
-            l_win = self.get_win(img, xc=l_win_xc, yc=win_yc)  # 左窗
-            r_win = self.get_win(img, xc=r_win_xc, yc=win_yc)  # 右窗
-
-            good_l_x = l_win.nonzero()[1]
-            good_r_x = r_win.nonzero()[1]
-            if len(good_l_x):
-                l_win_xc = int(l_win_xc + np.mean(good_l_x) - self.win_w/2)   # 更新左车道线下一个窗的x中心位置
-
-            if len(good_r_x):
-                r_win_xc = int(r_win_xc + np.mean(good_r_x) - self.win_w/2)  # 更新右车道线下一个窗的x中心位置
-
-            # 记录检测到的中心点
-            self.l_lane_centers[i, :] = [l_win_xc, win_yc] # 记录左车道线窗的中点 cx, cy
-            self.r_lane_centers[i, :] = [r_win_xc, win_yc] # 记录右车道线窗的中点 cx, cy
-
-
     def spin(self):
         ret, img = self.cap.read()  # 读入图片
-
         if ret == True:
             #--- 校正，二值化，透视变化
             binary_warped = self.prepocess(img)
+            binary_show = binary_warped.copy()
+            self.win_height = int(binary_warped.shape[0] * roiXRatio / nwindows)  # 窗的高度
             h, w = binary_warped.shape[:2]
-            if self.first_frame:  # 处理第一帧
-                self.init_lane_centers(binary_warped)
-                return
+            #--- 生成左, 右基点
+            if self.l_lane_centers[0,1]==0: # 第一帧，通过统计生成，要求左右车道线都在视野内
+                histogram_x = np.sum(binary_warped[int(binary_warped.shape[0] * (1-roiXBase)):, :], axis=0)  # 计算 x方向直方图 [x,]
+                midpoint = int(histogram_x.shape[0] / 2)                        # x方向中点，用来判断左右
+                left_base = np.argmax(histogram_x[:midpoint])                   # 定义左车道线的基点
+                right_base = np.argmax(histogram_x[midpoint:]) + midpoint       # 定义右车道线的基点
+            else:
+                left_base = self.l_lane_centers[0, 0]    # 上一帧第一个窗中心的x坐标
+                right_base = self.r_lane_centers[0, 0]   # 上一帧第一个窗中心的y坐标
 
-            if self.show:
-                binary_show = binary_warped.copy()
+            # 绘制初始窗基点
+            cv2.circle(binary_show, (left_base, h-10), 4, 125, -1)
+            cv2.circle(binary_show, (right_base, h-10), 4, 125, -1)
+            cv2.line(binary_show, (w//2, 0), (w//2, h-1), 127, 4)  # 中线
 
-            #--- 更新 lane_xc
-            for i in range(self.win_n):
-                # 窗中心等于上一帧的 lane_center
-                l_win_xc = self.l_lane_centers[i, 0]    # 上一帧第i个车道中心的x坐标
-                r_win_xc = self.r_lane_centers[i, 0]
-                win_yc = self.l_lane_centers[i, 1]      # 上一帧第i个车道中心的y坐标
-                # 生成窗
-                l_win = self.get_win(binary_warped, xc=l_win_xc, yc=win_yc)  # 左窗
-                r_win = self.get_win(binary_warped, xc=r_win_xc, yc=win_yc)  # 右窗
-                if self.show: # 绘制窗
-                    cv2.rectangle(  binary_show,
-                                    (int(l_win_xc-self.win_w/2), int(win_yc-self.win_h/2)),
-                                    (int(l_win_xc+self.win_w/2), int(win_yc+self.win_h/2)), 255, 2)  # 在图中画出左车道线的窗
-                    cv2.rectangle(  binary_show,
-                                    (int(r_win_xc-self.win_w/2), int(win_yc-self.win_h/2)),
-                                    (int(r_win_xc+self.win_w/2), int(win_yc+self.win_h/2)), 255, 2)  # 在图中画出右车道线的窗
-                # 计算窗中的 lane_xc
+            #--- 初始化, 开始迭代所有窗, 求出每个窗中车道线中心点
+            left_current = left_base    # 左车道线当前窗x中心位置 设为基点
+            right_current = right_base  # 右车道线当前窗x中心位置
+            for i in range(nwindows):
+                win_yc = int(h - (i + 0.5) * self.win_height)
+                win_left = self.get_win(binary_warped, xc=left_current, yc=win_yc)  # 左窗
+                win_right = self.get_win(binary_warped, xc=right_current, yc=win_yc) # 右窗
+
+                cv2.rectangle(  binary_show,
+                                (int(left_current-self.win_width/2), int(win_yc-self.win_height/2)),
+                                (int(left_current+self.win_width/2), int(win_yc+self.win_height/2)), 255, 2)  # 在图中画出左车道线的窗
+                cv2.rectangle(  binary_show,
+                                (int(right_current-self.win_width/2), int(win_yc-self.win_height/2)),
+                                (int(right_current+self.win_width/2), int(win_yc+self.win_height/2)), 255, 2)  # 在图中画出右车道线的窗
+
+                good_left_x = win_left.nonzero()[1]
+                good_right_x = win_right.nonzero()[1]
+                # print(win_left.shape[0]*win_left.shape[1], len(good_left_x), len(good_left_x))
                 # 若检测到车道线，用平均值更新中点，否则，不更新 TODO：拟合出下一个点
-                good_l_x = l_win.nonzero()[1]  # 非零像素 x 坐标
-                good_r_x = r_win.nonzero()[1]
-                l_det = len(good_l_x) > self.minpix  # 检测到车道线
-                r_det = len(good_r_x) > self.minpix
-                if l_det:
-                    l_lane_xc = int(l_win_xc + np.mean(good_l_x) - self.win_w/2)  # 计算左车道线窗的x中心位置
-                if r_det:
-                    r_lane_xc = int(r_win_xc + np.mean(good_r_x) - self.win_w/2)  # 计算右车道线窗的x中心位置
-                if l_det and not r_det:
-                    r_lane_xc = r_win_xc + (l_lane_xc - l_win_xc)
-                if r_det and not l_det:
-                    l_lane_xc = l_win_xc + (r_lane_xc - r_win_xc)
-                if not l_det and not r_det:
-                    continue
+                if len(good_left_x) > minpix:
+                    left_current = int(left_current + np.mean(good_left_x) - self.win_width/2)  # 更新左车道线窗的x中心位置
+                if len(good_right_x) > minpix:
+                    right_current = int(right_current + np.mean(good_right_x) - self.win_width/2)  # 更新右车道线窗的x中心位置
+                if i > 0:
+                    if len(good_left_x)>minpix and len(good_right_x)<minpix: # 如果左侧检测到车道线，用右侧近似更新右侧
+                        left_dx = left_current - self.l_lane_centers[i-1, 0]
+                        right_current += left_dx
+                    elif len(good_right_x)>minpix and len(good_left_x)<minpix: # 如果右侧检测到车道线，用左侧近似更新右侧
+                        right_dx = right_current - self.r_lane_centers[i-1, 0]
+                        left_current += right_dx
 
-                self.l_lane_centers[i, 0] = l_lane_xc  # 更新
-                self.r_lane_centers[i, 0] = r_lane_xc
+                # 记录检测到的中心点
+                self.l_lane_centers[i, :] = [left_current, win_yc] # 记录左车道线窗的中点 cx, cy
+                self.r_lane_centers[i, :] = [right_current, win_yc] # 右车道线窗的中点 cx, cy
 
-            #--- 绘制检测到的车道点
-            if self.show:
-                for i in range(self.win_n):
-                    cv2.circle(binary_show, self.l_lane_centers[i], 4, 125, -1)
-                    cv2.circle(binary_show, self.r_lane_centers[i], 4, 125, -1)
-                cv2.imshow('binary_show', binary_show)
-                cv2.waitKey(1)
+                # 可视化，画出窗
+                cv2.circle(binary_show, (left_current, win_yc), 4, 125, -1)
+                cv2.circle(binary_show, (right_current, win_yc), 4, 125, -1)
+
+            cv2.imshow('binary_show', binary_show)  # 显示每一帧窗的位置
+            cv2.waitKey(1)
 
             #--- 拟合
             left_fit = np.polyfit(self.l_lane_centers[:,1], self.l_lane_centers[:,0], 2)  # 左车道拟合
@@ -245,8 +220,8 @@ class camera:
         从图中取出一个窗, xc, yc 为窗中心点
         """
         ymax, xmax = img.shape
-        half_w = self.win_w // 2
-        half_h = self.win_h // 2
+        half_w = self.win_width // 2
+        half_h = self.win_height // 2
         ylow = max(yc-half_h, 0)
         yhigh = min(yc+half_h, ymax)
         xlow = min(max(xc-half_w, 0), xmax)
@@ -256,9 +231,6 @@ class camera:
 
 
 if __name__ == '__main__':
-    cam = camera()
-    while True:
-        cam.spin()
     try:
         cam = camera()
         while True:
