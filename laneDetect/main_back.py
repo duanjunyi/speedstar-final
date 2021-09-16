@@ -34,7 +34,7 @@ kerSz = (3, 3)  # 膨胀与腐蚀核大小
 grayThr = 145  # 二值化阈值
 roiXRatio = 3/5  # 统计x方向上histogram时选取的y轴坐标范围，以下方底边为起始点，比例定义终止位置
 roiXBase = 0.3  # 统计左右初始窗的y轴范围
-nwindows = 10  # 窗的数目
+nwindows = 15  # 窗的数目
 window_width = 200  # 窗的宽度
 minpix = 250  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
 
@@ -76,7 +76,7 @@ class camera:
     def __init__(self):
         self.camMat = camMat   # 相机校正矩阵
         self.camDistortion = camDistortion  # 相机失真矩阵
-        self.cap = cv2.VideoCapture(str(BASE_DIR / 'video/challenge_video2.mp4'))  # 读入视频
+        self.cap = cv2.VideoCapture(str(BASE_DIR / 'challenge_video.mp4'))  # 读入视频
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
         self.cap.set(cv2.CAP_PROP_FPS, frameFps)  # 设置读入帧率
@@ -84,6 +84,8 @@ class camera:
         self.l_lane_centers = np.zeros((nwindows, 2)).astype(np.int32) # 左车道线中心点，用于拟合
         self.r_lane_centers = np.zeros((nwindows, 2)).astype(np.int32) # 右车道线中心点
         self.win_width = window_width
+        self.win_height = frameHeight * roiXRatio // nwindows
+        self.n_win = nwindows
 
     def __del__(self):
         self.cap.release()  # 释放摄像头
@@ -93,6 +95,7 @@ class camera:
         if ret == True:
             #--- 校正，二值化，透视变化
             binary_warped = self.prepocess(img)
+            binary_show = binary_warped.copy()
             self.win_height = int(binary_warped.shape[0] * roiXRatio / nwindows)  # 窗的高度
             h, w = binary_warped.shape[:2]
             #--- 生成左, 右基点
@@ -106,9 +109,9 @@ class camera:
                 right_base = self.r_lane_centers[0, 0]   # 上一帧第一个窗中心的y坐标
 
             # 绘制初始窗基点
-            cv2.circle(binary_warped, (left_base, h-10), 4, 125, -1)
-            cv2.circle(binary_warped, (right_base, h-10), 4, 125, -1)
-            cv2.line(binary_warped, (w//2, 0), (w//2, h-1), 127, 4)  # 中线
+            cv2.circle(binary_show, (left_base, h-10), 4, 125, -1)
+            cv2.circle(binary_show, (right_base, h-10), 4, 125, -1)
+            cv2.line(binary_show, (w//2, 0), (w//2, h-1), 127, 4)  # 中线
 
             #--- 初始化, 开始迭代所有窗, 求出每个窗中车道线中心点
             left_current = left_base    # 左车道线当前窗x中心位置 设为基点
@@ -117,6 +120,13 @@ class camera:
                 win_yc = int(h - (i + 0.5) * self.win_height)
                 win_left = self.get_win(binary_warped, xc=left_current, yc=win_yc)  # 左窗
                 win_right = self.get_win(binary_warped, xc=right_current, yc=win_yc) # 右窗
+
+                cv2.rectangle(  binary_show,
+                                (int(left_current-self.win_width/2), int(win_yc-self.win_height/2)),
+                                (int(left_current+self.win_width/2), int(win_yc+self.win_height/2)), 255, 2)  # 在图中画出左车道线的窗
+                cv2.rectangle(  binary_show,
+                                (int(right_current-self.win_width/2), int(win_yc-self.win_height/2)),
+                                (int(right_current+self.win_width/2), int(win_yc+self.win_height/2)), 255, 2)  # 在图中画出右车道线的窗
 
                 good_left_x = win_left.nonzero()[1]
                 good_right_x = win_right.nonzero()[1]
@@ -139,14 +149,10 @@ class camera:
                 self.r_lane_centers[i, :] = [right_current, win_yc] # 右车道线窗的中点 cx, cy
 
                 # 可视化，画出窗
-                cv2.rectangle(  binary_warped,
-                                (int(left_current-self.win_width/2), int(win_yc-self.win_height/2)),
-                                (int(left_current+self.win_width/2), int(win_yc+self.win_height/2)), 255, 2)  # 在图中画出左车道线的窗
-                cv2.rectangle(  binary_warped,
-                                (int(right_current-self.win_width/2), int(win_yc-self.win_height/2)),
-                                (int(right_current+self.win_width/2), int(win_yc+self.win_height/2)), 255, 2)  # 在图中画出右车道线的窗
+                cv2.circle(binary_show, (left_current, win_yc), 4, 125, -1)
+                cv2.circle(binary_show, (right_current, win_yc), 4, 125, -1)
 
-            cv2.imshow('binary_warped', binary_warped)  # 显示每一帧窗的位置
+            cv2.imshow('binary_show', binary_show)  # 显示每一帧窗的位置
             cv2.waitKey(1)
 
             #--- 拟合
@@ -193,7 +199,9 @@ class camera:
             cv2.waitKey(1)
 
     def prepocess(self, img):
-        # 预处理，图像增强
+        """
+        取下方区域，矫正畸变，二值化，透视变换
+        """
         mask = np.zeros_like(img)  # 创建遮罩
         cv2.rectangle(mask, (0, int(img.shape[0] * (1 - roiXRatio))), (img.shape[1], img.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
         segment = cv2.bitwise_and(img, mask)  # 取出遮罩范围
