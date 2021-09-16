@@ -24,10 +24,10 @@ camDistortion = np.array([[-0.056882894892153, 0.002184364631645, -0.00283682137
 
 
 # 透视变换
-src_points = np.array([[0., 527.], [416., 419.], [781., 420.], [1065., 542.]], dtype="float32")  # 源点
-dst_points = np.array([[266., 686.], [266., 19.], [931., 20.], [931., 701.]], dtype="float32")  # 目标点
-# src_points = np.array([[498., 596.], [789., 596.], [250., 720.], [1050., 720.]], dtype="float32")  # 源点
-# dst_points = np.array([[300., 100.], [980., 100.], [300., 720.], [980., 720.]], dtype="float32")  # 目标点
+# src_points = np.array([[0., 527.], [416., 419.], [781., 420.], [1065., 542.]], dtype="float32")  # 源点
+# dst_points = np.array([[266., 686.], [266., 19.], [931., 20.], [931., 701.]], dtype="float32")  # 目标点
+src_points = np.array([[498., 596.], [789., 596.], [250., 720.], [1050., 720.]], dtype="float32")  # 源点
+dst_points = np.array([[300., 100.], [980., 100.], [300., 720.], [980., 720.]], dtype="float32")  # 目标点
 MWarp = cv2.getPerspectiveTransform(src_points, dst_points)  # 透视变换矩阵计算
 
 
@@ -52,7 +52,7 @@ class camera:
     def __init__(self):
         self.camMat = camMat   # 相机校正矩阵
         self.camDistortion = camDistortion  # 相机失真矩阵
-        self.cap = cv2.VideoCapture(BASE_DIR + '\\challenge_video.mp4')  # 读入视频
+        self.cap = cv2.VideoCapture(BASE_DIR + '\\video\\慢速绕圈.mp4')  # 读入视频
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
         self.cap.set(cv2.CAP_PROP_FPS, frameFps)    # 设置读入帧率
@@ -87,7 +87,7 @@ class camera:
 
     def spin(self):
         ret, img = self.cap.read()  # 读入图片
-        img = cv2.resize(img, (1280, 720), interpolation=cv2.INTER_LINEAR)
+        # img = cv2.resize(img, (1280, 720), interpolation=cv2.INTER_LINEAR)
         if ret == True:
             #--- 校正，二值化，透视变化
             img_prep = self.prepocess(img)
@@ -153,21 +153,20 @@ class camera:
                 r_curve = np.polyfit(r_det_pts[:, 1], r_det_pts[:, 0], 2)   # 右车道线拟合
                 self.update_curve(l_curve, 0)   # 更新左，右车道拟合线
                 self.update_curve(r_curve, 1)
-            elif l_win_nums >= r_win_nums:  # 只检出左车道线
+            elif l_win_nums >= r_win_nums and l_win_nums>0:  # 只检出左车道线
                 l_curve = np.polyfit(l_det_pts[:, 1], l_det_pts[:, 0], 2)   # 左车道线拟合
                 self.update_curve(l_curve, 0)
-                self.lane_curve[1] = None
+                # self.lane_curve[1] = None
                 self.update_lane_xc(1)              # 右车道线已检出的点不可信，用左车道线偏移量将其覆盖
 
             elif r_win_nums > l_win_nums:   # 只检出右车道线
                 r_curve = np.polyfit(r_det_pts[:, 1], r_det_pts[:, 0], 2) # 右车道线拟合
                 self.update_curve(r_curve, 1)
-                self.lane_curve[0] = None
+                # self.lane_curve[0] = None
                 self.update_lane_xc(0)              # 左车道线已检出的点不可信，用右车道线偏移将其覆盖
 
             else:
-                raise "fault"
-
+                print('No lane was detected')
 
             # 计算航向偏差
             if l_win_nums>=self.wins_thr and r_win_nums>=self.wins_thr:
@@ -177,7 +176,7 @@ class camera:
                 veh_pos = self.frame_w / 2.0  # 小车位置，目前定义为画面中心
                 self.lane_cmPerPixel = roadWidth / np.abs(rx - lx)
                 distance_from_center = (veh_pos - cen_pos) * self.lane_cmPerPixel
-            elif l_win_nums >= r_win_nums:  # 只检出左车道线
+            elif l_win_nums >= r_win_nums and l_win_nums>0:  # 只检出左车道线
                 cen_pos = np.polyval(self.lane_curve[0], self.frame_h)*self.lane_cmPerPixel + roadWidth / 2  # 车道中心线位置
                 veh_pos = self.frame_w / 2.0  * self.lane_cmPerPixel # 小车位置，目前定义为画面中心
                 distance_from_center = veh_pos - cen_pos
@@ -200,7 +199,7 @@ class camera:
                     l_curve_real = np.polyfit(y * y_cmPerPixel, l_x * x_cmPerPixel, 2)  # 映射到现实尺度下左车道线的拟合
                     r_curve_real = np.polyfit(y * y_cmPerPixel, r_x * x_cmPerPixel, 2)  # 映射到现实尺度下右车道线的拟合
                     curve_rad = (self.curvature(l_curve_real, ymax) + self.curvature(r_curve_real, ymax)) / 2
-                elif l_win_nums >= r_win_nums:
+                elif l_win_nums >= r_win_nums and l_win_nums>0:
                     l_x = np.polyval(self.lane_curve[0], y)
                     pts = np.transpose(np.vstack([l_x, y])).astype(np.int32)
                     # 计算曲率
@@ -311,6 +310,4 @@ if __name__ == '__main__':
     cam = camera()
     while True:
         cam.spin()
-
-
 
