@@ -15,7 +15,7 @@ def loop_idx(size):
         yield idx
         idx = 0 if idx>=size-1 else idx+1
 
-class Driver():
+class Driver(object):
     """
     小车驱动类,包含以下功能：
     驱动：
