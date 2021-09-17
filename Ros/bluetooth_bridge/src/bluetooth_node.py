@@ -24,8 +24,8 @@ class Application:
 
     is_running   = True
     is_connected = False
-    bt_channel = 22       # Bluetooth channel
-    rate_hz = 100  # 频率
+    bt_channel = 22         # Bluetooth channel
+    rate_hz = 100           # 频率
     # subscribe topic
     topic_bt_send = "/bluetooth/send"           # 接收需要发送给蓝牙的信息
 

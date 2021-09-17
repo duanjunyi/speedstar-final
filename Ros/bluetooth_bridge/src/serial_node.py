@@ -48,13 +48,13 @@ signal.signal(signal.SIGINT, sigint_handler)
 
 
 """ callbacks """
-# default       head,direction,speed,mode,manul,beep,crc,bit
+# default       head,direction,speed,mode,manul,beep,nouse,crc
 #             [ 0xaa,50       ,0    ,3   ,0    ,0   ,0  , 0]
 driver_data = [chr(0xaa), chr(50), chr(0), chr(3), chr(0), chr(0), chr(0), chr(0)]
 flag_manul = 0
 
 def calc_crc(data):
-    return chr(ord(data[0])^ord(data[1])^ord(data[2])^ord(data[3])^ord(data[4])^ord(data[5]))
+    return chr(ord(data[0])^ord(data[1])^ord(data[2])^ord(data[3])^ord(data[4])^ord(data[5])^ord(data[6]))
 
 def callback_bluetooth(message):
     global flag_manul
@@ -65,28 +65,28 @@ def callback_bluetooth(message):
 
 def callback_direction(message):
     driver_data[1] = chr(message.data)    # update global driver_data
-    driver_data[6] = calc_crc(driver_data)
+    driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
         ser.write(''.join(driver_data))
         ser.flush()
 
 def callback_speed(message):
     driver_data[2] = chr(message.data)    # update global driver_data
-    driver_data[6] = calc_crc(driver_data)
+    driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
         ser.write(''.join(driver_data))
         ser.flush()
 
 def callback_mode(message):
     driver_data[3] = chr(message.data)    # update global driver_data
-    driver_data[6] = calc_crc(driver_data)
+    driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
         ser.write(''.join(driver_data))
         ser.flush()
 
 def callback_beep(message):
     driver_data[5] = chr(message.data)    # update global driver_data
-    driver_data[6] = calc_crc(driver_data)
+    driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
         ser.write(''.join(driver_data))
         ser.flush()

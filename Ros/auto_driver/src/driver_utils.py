@@ -9,6 +9,7 @@ from bluetooth_bridge.msg import Sensors
 import threading
 
 def loop_idx(size):
+    """ 生成循环索引 """
     idx = 0
     while True:
         yield idx
@@ -35,11 +36,12 @@ class Driver():
     """
     def __init__(self, cache_size=10, debug=True):
         self.Debug = debug
+        # 控制
         self.direction_pub  = rospy.Publisher("/auto_driver/send/direction", Int32, queue_size=10)
         self.speed_pub      = rospy.Publisher("/auto_driver/send/speed", Int32, queue_size=10)
         self.mode_pub       = rospy.Publisher("/auto_driver/send/mode", Int32, queue_size=10)
         self.beep_pub      = rospy.Publisher("/auto_driver/send/beep", Int32, queue_size=10)
-
+        # 传感
         self.sensor_sub    = rospy.Subscriber('/vcu', Sensors, self.sensors_callback)
 
         self.cache_size = cache_size

@@ -24,10 +24,10 @@ camDistortion = np.array([[-0.056882894892153, 0.002184364631645, -0.00283682137
 
 
 # 透视变换
-# src_points = np.array([[0., 527.], [416., 419.], [781., 420.], [1065., 542.]], dtype="float32")  # 源点
-# dst_points = np.array([[266., 686.], [266., 19.], [931., 20.], [931., 701.]], dtype="float32")  # 目标点
-src_points = np.array([[498., 596.], [789., 596.], [250., 720.], [1050., 720.]], dtype="float32")  # 源点
-dst_points = np.array([[300., 100.], [980., 100.], [300., 720.], [980., 720.]], dtype="float32")  # 目标点
+src_points = np.array([[0., 527.], [416., 419.], [781., 420.], [1065., 542.]], dtype="float32")  # 源点
+dst_points = np.array([[266., 686.], [266., 19.], [931., 20.], [931., 701.]], dtype="float32")  # 目标点
+# src_points = np.array([[498., 596.], [789., 596.], [250., 720.], [1050., 720.]], dtype="float32")  # 源点
+# dst_points = np.array([[300., 100.], [980., 100.], [300., 720.], [980., 720.]], dtype="float32")  # 目标点
 MWarp = cv2.getPerspectiveTransform(src_points, dst_points)  # 透视变换矩阵计算
 
 
@@ -36,7 +36,7 @@ kerSz = (3, 3)  # 膨胀与腐蚀核大小
 grayThr = 125  # 二值化阈值
 roiXRatio = 0.4  # 统计x方向上histogram时选取的y轴坐标范围，以下方底边为起始点，比例定义终止位置
 nwindows = 20  # 窗的数目
-window_width = 250  # 窗的宽度
+window_width = 200  # 窗的宽度
 minpix = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
 
 
@@ -52,7 +52,7 @@ class camera:
     def __init__(self):
         self.camMat = camMat   # 相机校正矩阵
         self.camDistortion = camDistortion  # 相机失真矩阵
-        self.cap = cv2.VideoCapture(BASE_DIR + '\\video\\慢速绕圈.mp4')  # 读入视频
+        self.cap = cv2.VideoCapture(BASE_DIR + '\\video\\challenge_video.mp4')  # 读入视频
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
         self.cap.set(cv2.CAP_PROP_FPS, frameFps)    # 设置读入帧率
@@ -122,7 +122,6 @@ class camera:
                 # 检测窗中的车道线中心 lane_xc
                 l_det = len(l_win_pts) > self.pix_thr   # 检测到左车道线中点
                 r_det = len(r_win_pts) > self.pix_thr   # 检测到右车道线中点
-                self.lane_flag[:, i] = [l_det, r_det]   # 更新检出标志位
 
                 if l_det:
                     l_det_pts.append(l_win_pts)
@@ -130,6 +129,7 @@ class camera:
                 if r_det:
                     r_det_pts.append(r_win_pts)
                     self.lane_xc[1, i] = int(np.mean(r_win_pts[:, 0]))  # 更新右车道线的 x 中心位置
+                self.lane_flag[:, i] = [l_det, r_det]   # 更新检出标志位
 
             #--- 绘制检测到的车道点
             if self.show:
@@ -151,17 +151,17 @@ class camera:
             if l_win_nums>=self.wins_thr and r_win_nums>=self.wins_thr:     # 左右车道线都检测出
                 l_curve = np.polyfit(l_det_pts[:, 1], l_det_pts[:, 0], 2)   # 左车道线拟合
                 r_curve = np.polyfit(r_det_pts[:, 1], r_det_pts[:, 0], 2)   # 右车道线拟合
-                self.update_curve(l_curve, 0)   # 更新左，右车道拟合线
-                self.update_curve(r_curve, 1)
+                self.update_curve(l_curve, 0, l_det_pts)   # 更新左，右车道拟合线
+                self.update_curve(r_curve, 1, r_det_pts)
             elif l_win_nums >= r_win_nums and l_win_nums>0:  # 只检出左车道线
                 l_curve = np.polyfit(l_det_pts[:, 1], l_det_pts[:, 0], 2)   # 左车道线拟合
-                self.update_curve(l_curve, 0)
+                self.update_curve(l_curve, 0, l_det_pts)
                 # self.lane_curve[1] = None
                 self.update_lane_xc(1)              # 右车道线已检出的点不可信，用左车道线偏移量将其覆盖
 
             elif r_win_nums > l_win_nums:   # 只检出右车道线
                 r_curve = np.polyfit(r_det_pts[:, 1], r_det_pts[:, 0], 2) # 右车道线拟合
-                self.update_curve(r_curve, 1)
+                self.update_curve(r_curve, 1, r_det_pts)
                 # self.lane_curve[0] = None
                 self.update_lane_xc(0)              # 左车道线已检出的点不可信，用右车道线偏移将其覆盖
 
@@ -230,6 +230,7 @@ class camera:
                 cv2.putText(result, center_text, (100, 150), font, 1, (20, 20, 255), 2)
                 cv2.imshow('result', result)
                 cv2.waitKey(1)
+                cv2.waitKey(0)
 
 
     def prepocess(self, img):
@@ -284,13 +285,13 @@ class camera:
     def update_lane_xc(self, side):
         """ 更新车道线中点 """
         if side == 1:
-            self.lane_xc[1, :] = self.lane_xc[0, :] + 750
+            self.lane_xc[1, :] = self.lane_xc[0, :] + 850
             self.lane_flag[1, :] = True
         elif side == 0:
-            self.lane_xc[0, :] = self.lane_xc[1, :] - 750
+            self.lane_xc[0, :] = self.lane_xc[1, :] - 850
             self.lane_flag[0, :] = True
 
-    def update_curve(self, curve_new, side):
+    def update_curve(self, curve_new, side, det_pts):
         """ 更新拟合曲线，防止曲线突变 """
         if self.lane_curve[side] is None:
             self.lane_curve[side] = curve_new
@@ -298,6 +299,19 @@ class camera:
         centers = np.sum(self.lane_flag[side])          # 检出点数
         if diff < -0 and centers < 10:
             return
+        ymid = - curve_new[1] / curve_new[0] / 2
+        print(curve_new, ymid)
+        cnt = 0
+        while ymid > 100 and ymid<self.frame_h-100 and abs(curve_new[0])> 3e-3 :
+            num = len(det_pts)
+            det_pts = det_pts[int(0.2*num):]
+            curve_new = np.polyfit(det_pts[:, 1], det_pts[:, 0], 2)
+            if cnt < 2:
+                cnt += 1
+                print('pass')
+                continue
+            return
+
         self.lane_curve[side] = curve_new
 
     def curvature(self, curve, y):
