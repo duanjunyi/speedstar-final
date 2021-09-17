@@ -32,7 +32,7 @@ while True:
     c = cv2.waitKey(0)  # 等待键盘按下按键退出
     if c == 27: # 按下esc退出
         print(lower_color, upper_color)
-        exit()
+        break
     if c in [ord('1'), ord('2'), ord('3'), ord('4'), ord('5'), ord('6')]: # 更改那个变量
         idx = int(chr(c)) - 1
         print(f'Change {hsv_name[idx]}')
