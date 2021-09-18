@@ -23,6 +23,13 @@ class Hilens:
         img_rgb = cv2.cvtColor(input_yuv, cv2.COLOR_YUV2RGB_NV21)  # 转为RGB格式
         return img_rgb
 
+    def show(self, img, bboxes):
+        img = utils.draw_boxes(img, bboxes)      #
+        # socketSendMsg(socket_3399, labelName)
+        output_yuv = hl.cvt_color(img, hl.RGB2YUV_NV21)
+        self.display.show(output_yuv)  # 显示到屏幕上
+
+
     def __del__(self):
         hl.terminate()
 
@@ -41,7 +48,6 @@ class ObjDetectThread(threading.Thread):  # 目标检测线程类
             img_preprocess, img_w, img_h = utils.preprocess(input_img)  # 缩放为模型输入尺寸
             output = self.model.infer([img_preprocess.flatten()])  # 模型推理
             bboxes = utils.get_result(output, img_w, img_h)  # 获取检测结果
-            # output_img = utils.draw_boxes(output_img, bboxes)  # 在图像上画框
 
 
 class LaneDetectThread(threading.Thread):  # 车道线检测线程类
@@ -51,18 +57,15 @@ class LaneDetectThread(threading.Thread):  # 车道线检测线程类
         self.laneDet = laneDet
 
     def run(self):
-        global input_img, curve_rad, distance_from_center
+        global input_img, curve_rad, distance_from_center, output_img
         while True:
-            curve_rad, distance_from_center = laneDet.spin(input_img)
-
-
-
+            distance_from_center, curve_rad, img_show, output_img = self.laneDet.spin(input_img) # 更新了output_img
 
 
 if __name__ == "__main__":
     # 初始化通讯传递变量
     bboxes = []
-    curve_rad= 0
+    curve_rad = 0
     distance_from_center = 0
 
     # 创建socket
@@ -75,7 +78,7 @@ if __name__ == "__main__":
     frameHeight = 720  # 长
     hl_camera = Hilens('checkvalue', frameWidth, frameHeight)  # 根据实际情况指定
     input_img = hl_camera.read_img()  # 初始化图像
-    output_img = input_img
+    output_img = input_img.copy()
 
     # 初始化车道线检测常量
     # 相机内参
@@ -101,7 +104,7 @@ if __name__ == "__main__":
     roadWidth = 80  # 道路宽度 单位：cm
     y_offset = 50.0  # 由于相机位置较低，识别到的车道线距离车身较远，不是当前位置，定义到的车道线与车身距离 单位：cm<no usage>
     cam_offset = 18.0  # 相机中心与车身中轴线的距离 单位：cm
-    isShow = False  # 是否显示
+    isShow = True  # 是否显示
     laneDet = laneDetect(MWarp, camMat, camDistortion, kerSz, grayThr, frameHeight, frameWidth, roiXRatio, window_width,
                  nwindows, minpix, x_cmPerPixel, y_cmPerPixel, roadWidth, isShow)  # 初始化车道线检测
 
@@ -115,7 +118,7 @@ if __name__ == "__main__":
     laneThread.start()
     while True:
         input_img = hl_camera.read_img()  # 用来处理的图
-        # output_img = input_img  # 用来显示的图
+        hl_camera.show(output_img, bboxes)
         # 发送代码，待补充
 
 

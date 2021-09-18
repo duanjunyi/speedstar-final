@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
 # !/usr/bin/python3
+# -*- coding: utf-8 -*-
 
 import cv2
 import numpy as np
 import os
 import json
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
+current_dir = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(current_dir, 'hilens_model_info.json'), 'r') as f:
   index_map = json.loads(f.read())
 image_shape = index_map['image_shape']

@@ -10,7 +10,6 @@ import time
 import cv2
 import numpy as np
 import math
-import matplotlib.pyplot as plt
 
 class laneDetect:
     def __init__(self, Mwarp, camMat, camDistortion, kerSz, grayThr, frameHeight, frameWidth, roiXRatio, window_width,
@@ -37,7 +36,7 @@ class laneDetect:
         self.lane_cmPerPixel = x_cmPerPixel  # 车道线内部一个像素对应的真实距离 单位：cm
         self.y_cmPerPixel = y_cmPerPixel  # x方向上一个像素对应的真实距离 单位：cm
         self.x_cmPerPixel = x_cmPerPixel  # y方向上一个像素对应的真实距离 单位：cm
-        self.roadWith = roadWidth  # 道路宽度 单位：cm
+        self.roadWidth = roadWidth  # 道路宽度 单位：cm
 
     def init_lane_xc(self, img):
         """ 输入第一帧经过预处理的图片，初始化 lane_xc 中的第一列，即左右车道线底部两个窗的 xc 坐标 """
@@ -49,7 +48,6 @@ class laneDetect:
         self.lane_flag[:, 0] = [True, True]
 
     def spin(self, img):
-        # 待重构，输入img,输出outimg(用来显示),curve_rad, distance_from_center
         #--- 校正，二值化，透视变化
         img_prep = self.prepocess(img)
         if self.show:
@@ -175,24 +173,26 @@ class laneDetect:
             else:
                 return
             cv2.polylines(img_show, [pts,], False, (0, 255, 0), 2)
-            cv2.imshow('img_show', img_show)
-            cv2.waitKey(1)
+            # cv2.imshow('img_show', img_show)
+            # cv2.waitKey(1)
 
             # 映射到真实图像, 绘图
             color_warp = np.zeros_like(img).astype(np.uint8)
             cv2.fillPoly(color_warp, [pts,], (0, 255, 0))
-            newwarp = cv2.warpPerspective(color_warp, self.MWarp, (img.shape[1], img.shape[0]), None, cv2.WARP_INVERSE_MAP)
-            result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
+            newwarp = cv2.warpPerspective(color_warp, self.Mwarp, (img.shape[1], img.shape[0]), None, cv2.WARP_INVERSE_MAP)
+            img_copy = img.copy()
+            img_show_real = cv2.addWeighted(img_copy, 1, newwarp, 0.3, 0)
             font = cv2.FONT_HERSHEY_SIMPLEX
             radius_text = "Radius of Curvature: %.3f cm" % (curve_rad)
-            cv2.putText(result, radius_text, (100, 100), font, 1, (20, 20, 255), 2)
+            cv2.putText(img_show_real, radius_text, (100, 100), font, 1, (20, 20, 255), 2)
             pos_flag = 'right' if distance_from_center>0 else 'left'
             center_text = "Vehicle is %.3f cm %s of center" % (abs(distance_from_center), pos_flag)
-            cv2.putText(result, center_text, (100, 150), font, 1, (20, 20, 255), 2)
-            cv2.imshow('result', result)
-            cv2.waitKey(1)
-            cv2.waitKey(0)
-        return curve_rad, distance_from_center
+            cv2.putText(img_show_real, center_text, (100, 150), font, 1, (20, 20, 255), 2)
+            # cv2.imshow('result', img_show_real)
+            # cv2.waitKey(1)
+            #                                       车道线图   映射到真实图
+            return distance_from_center, curve_rad, img_show, img_show_real
+        return distance_from_center
 
     def prepocess(self, img):
         """
@@ -206,7 +206,7 @@ class laneDetect:
         # gray_Blur = cv2.erode(undist_img, self.kernal, iterations=1)  # 腐蚀
         _, gray_img = cv2.threshold(gray_Blur, self.grayThr, 255, cv2.THRESH_BINARY) # 二值化
         gray_img_1c = np.mean(gray_img, axis=2).astype(np.uint8)  # 单通道化
-        perspect_img = cv2.warpPerspective(gray_img_1c, self.MWarp, (gray_Blur.shape[1], gray_Blur.shape[0]),
+        perspect_img = cv2.warpPerspective(gray_img_1c, self.Mwarp, (gray_Blur.shape[1], gray_Blur.shape[0]),
                                             cv2.INTER_LINEAR)  # 透视变换
         return perspect_img
 
