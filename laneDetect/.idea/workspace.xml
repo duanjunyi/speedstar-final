@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="49e6aec0-cd9f-4c40-ae1d-70334086b94f" name="Changes" comment="&lt;Category&gt;&#10;# 类型字段包含:&#10;#     feat：新功能（feature）&#10;#     fix：修复bug&#10;#     doc：文档（documentation）&#10;#     style： 格式化 ESLint调整等（不影响代码运行的变动）&#10;#     refactor：重构（即不是新增功能，也不是修改bug的代码变动）&#10;#     perf: 代码的修改提高的性能&#10;#     test：增加测试&#10;#     chore: 构建过程或构建工具的改变(并没有生产环境代码的改变)&#10;&#10;&#10;&lt;Symptom&gt;&#10;# Bug的表现&#10;&#10;&#10;&lt;Root Cause&gt;&#10;# Bug出现的原因&#10;&#10;&#10;&lt;Solution&gt;&#10;# 解决措施&#10;&#10;&#10;&lt;Influence Range&gt;&#10;# 影响范围">
-      <change beforePath="$PROJECT_DIR$/../.gitmessage.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitmessage.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/Speedstar-Final.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../.idea/Speedstar-Final.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-    </list>
+    <list default="true" id="49e6aec0-cd9f-4c40-ae1d-70334086b94f" name="Changes" comment="&lt;Category&gt;&#10;# 类型字段包含:&#10;#     feat：新功能（feature）&#10;#     fix：修复bug&#10;#     doc：文档（documentation）&#10;#     style： 格式化 ESLint调整等（不影响代码运行的变动）&#10;#     refactor：重构（即不是新增功能，也不是修改bug的代码变动）&#10;#     perf: 代码的修改提高的性能&#10;#     test：增加测试&#10;#     chore: 构建过程或构建工具的改变(并没有生产环境代码的改变)&#10;&#10;&#10;&lt;Symptom&gt;&#10;# Bug的表现&#10;&#10;&#10;&lt;Root Cause&gt;&#10;# Bug出现的原因&#10;&#10;&#10;&lt;Solution&gt;&#10;# 解决措施&#10;&#10;&#10;&lt;Influence Range&gt;&#10;# 影响范围" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

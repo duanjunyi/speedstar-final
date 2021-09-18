@@ -2,3 +2,5 @@ __pycache__/
 *test.py
 .vscode/
 out_videos/
+*.idea
+*.keep
