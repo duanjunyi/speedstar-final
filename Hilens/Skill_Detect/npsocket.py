@@ -99,5 +99,15 @@ class NumpySocket():
         frame = pickle.loads(frame_data)
         return self.conn_state, frame
 
+    def wrap(self, bboxes, curve_rad, distance_from_center):
+        if not bboxes:
+            bboxes = [[0, 0, 0, 0, 0, 0, curve_rad, distance_from_center]]
+        else:
+            for bbox in bboxes:
+                bbox.append(curve_rad)
+                bbox.append(distance_from_center)
+        send_msg = np.array(bboxes)
+        send_msg.astype('float')
+        return send_msg
 
 

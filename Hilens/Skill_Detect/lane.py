@@ -279,4 +279,3 @@ class laneDetect:
         """ 计算曲率半径 """
         return ((1 + (2*curve[0] * y * self.y_cmPerPixel + curve[1])**2)**1.5)\
                         / max(np.absolute(2*curve[0]), 0.001)
-
