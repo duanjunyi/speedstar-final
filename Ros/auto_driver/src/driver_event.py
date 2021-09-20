@@ -4,8 +4,9 @@
 import rospy
 from PID import PID
 
-""" 事件基类 """
+
 class DriverEvent(object):
+    """ 事件基类 """
     def __init__(self, driver):
         self.driver = driver # 小车驱动
 
@@ -18,8 +19,9 @@ class DriverEvent(object):
     def strategy(self):
         raise NotImplemented
 
-""" 循线事件 """
+
 class FollowLaneEvent(DriverEvent):
+    """ 循线事件 """
     def __init__(self, driver, controller=None):
         super(FollowLaneEvent, self).__init__(driver)
         # 定义控制器
@@ -43,3 +45,71 @@ class FollowLaneEvent(DriverEvent):
         bias = self.driver.get_bias()
         direct = self.controller(bias)
         self.driver.set_direction(direct)
+
+
+class RedStopEvent(DriverEvent):
+    """ 红灯事件 """
+    def __init__(self, driver, area_thr, y_thr, score_thr=0.5):
+        """
+        初始化
+        :param area_thr: 检测红灯的面积阈值
+        :param score_thr: 检测红灯的置信度阈值
+        :param y_thr: 红灯高度阈值
+        """
+        super(FollowLaneEvent, self).__init__(driver)
+        self.area_thr = area_thr
+        self.score_thr = score_thr
+        self.y_thr = y_thr
+
+    def is_start(self):
+        """ 事件是否开始 """
+        flag, x_min, y_min, x_max, y_max, score = self.driver.get_objs(2)
+        if flag and score > self.score_thr:
+            area = (x_max - x_min) * (y_max - y_min)
+            y = (y_min + y_max) / 2
+            if area > self.area_thr and y > self.y_thr:
+                return True
+        return False
+
+    def is_end(self):
+        """ 事件是否终止 """
+        return not self.is_start()
+
+    def strategy(self):
+        """ 控制策略 """
+        self.driver.set_speed(0)
+
+
+class GreenGoEvent(DriverEvent):
+    """ 绿灯事件 """
+    def __init__(self, driver, speed, area_thr, y_thr, score_thr=0.5):
+        """
+        初始化
+        :param speed: 启动时设置的速度
+        :param area_thr: 检测绿灯的面积阈值
+        :param score_thr: 检测绿灯的置信度阈值
+        :param y_thr: 绿灯高度阈值
+        """
+        super(FollowLaneEvent, self).__init__(driver)
+        self.speed = speed
+        self.area_thr = area_thr
+        self.score_thr = score_thr
+        self.y_thr = y_thr
+
+    def is_start(self):
+        """ 事件是否开始 """
+        flag, x_min, y_min, x_max, y_max, score = self.driver.get_objs(0)
+        if flag and score > self.score_thr:
+            area = (x_max - x_min) * (y_max - y_min)
+            y = (y_min + y_max) / 2
+            if area > self.area_thr and y > self.y_thr:
+                return True
+        return False
+
+    def is_end(self):
+        """ 事件是否终止 """
+        return not self.is_start()
+
+    def strategy(self):
+        """ 控制策略 """
+        self.driver.set_speed(self.speed)
