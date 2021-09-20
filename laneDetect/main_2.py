@@ -47,8 +47,9 @@ class laneDetect:
         pixes = img_prep.nonzero()  # 所有非零像素
         for i in range(self.win_n):
             # 窗中心
-            l_win_xc, r_win_xc = self.check_order(*self.porpose_win_xc(img_prep, i))      # 第i层左右车道预测窗中心 x 坐标
             win_yc = self.lane_yc[i]                                # 第i层左右车道预测窗中心 y 坐标
+            l_win_xc, r_win_xc = self.check_order(*self.porpose_win_xc(img_prep, i))      # 第i层左右车道预测窗中心 x 坐标
+            # l_win_xc, r_win_xc = self.check_order2(*self.porpose_win_xc(img_prep, i), pixes, win_yc) # 第i层左右车道预测窗中心 x 坐标
             # 生成窗
             l_win_pts = self.get_win(pixes, xc=l_win_xc, yc=win_yc)  # 左窗中所有像素点坐标 [n,2]
             r_win_pts = self.get_win(pixes, xc=r_win_xc, yc=win_yc)  # 右窗
@@ -157,12 +158,12 @@ class laneDetect:
         取下方区域，矫正畸变，二值化，透视变换
         """
         mask = np.zeros_like(img)  # 创建遮罩
-        cv2.rectangle(mask, (0, int(img.shape[0] * (1 - roiXRatio))), (img.shape[1], img.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
+        cv2.rectangle(mask, (0, int(img.shape[0] * (1 - self.roiXRatio))), (img.shape[1], img.shape[0]), (255, 255, 255), cv2.FILLED)  # 填充遮罩
         segment = cv2.bitwise_and(img, mask)  # 取出遮罩范围
         undist_img = cv2.undistort(segment, self.camMat, self.camDistortion, None, self.camMat)  # 校正畸变图像
         gray_Blur = cv2.dilate(undist_img, self.kernal, iterations = 1)  # 膨胀
         # gray_Blur = cv2.erode(undist_img, self.kernal, iterations=1)  # 腐蚀
-        _, gray_img = cv2.threshold(gray_Blur, grayThr, 255, cv2.THRESH_BINARY) # 二值化
+        _, gray_img = cv2.threshold(gray_Blur, self.gray_thr, 255, cv2.THRESH_BINARY) # 二值化
         gray_img_1c = np.mean(gray_img, axis=2).astype(np.uint8)  # 单通道化
         perspect_img = cv2.warpPerspective(gray_img_1c, self.Mwarp, (gray_Blur.shape[1], gray_Blur.shape[0]),
                                             cv2.INTER_LINEAR)  # 透视变换
@@ -184,6 +185,30 @@ class laneDetect:
             xc_mean = np.mean(self.lane_xc, axis=1)  # 窗xc的平均值
             error = np.abs(xc_mean - [l_xc, r_xc])
             if error[0] < error[1]:
+                r_xc = l_xc + self.road_w_pix
+            else:
+                l_xc = r_xc - self.road_w_pix
+        return l_xc, r_xc
+
+    def check_order2(self, l_xc, r_xc, pixes, yc):
+        """ 对 porpose_win_xc 得到的窗中心进行检查 """
+        xc_mean = np.mean(self.lane_xc, axis=1)  # 窗xc的平均值
+        error = xc_mean - [l_xc, r_xc]
+        # 避免左窗在右车道线，右窗在更右侧或相反情况（检查左车道线左侧和右车道线右侧）
+        if l_xc > self.frame_w//2:
+            win_pts = self.get_win(pixes, l_xc-self.road_w_pix, yc)
+            if len(win_pts) > self.pix_thr:
+                r_xc = l_xc
+                l_xc = l_xc-self.road_w_pix
+        elif r_xc < self.frame_w//2:
+            win_pts = self.get_win(pixes, r_xc+self.road_w_pix, yc)
+            if len(win_pts) > self.pix_thr:
+                l_xc = r_xc
+                r_xc = r_xc+self.road_w_pix
+        # 避免两窗在同一车道线上，或者左窗右窗顺序相反
+        if (r_xc-l_xc)<80:
+            # error更大的窗为错误窗
+            if abs(error[0]) < abs(error[1]):
                 r_xc = l_xc + self.road_w_pix
             else:
                 l_xc = r_xc - self.road_w_pix
@@ -313,7 +338,7 @@ if __name__ == '__main__':
     roadWidCm = 80      # 道路宽度 单位：cm
     roadWidPix = 660    # 透视变换后车道线像素数
     isShow = True       # 是否返回可视化图片
-    cap = cv2.VideoCapture(BASE_DIR + '\\video\\快速绕圈.mp4')  # 读入视频
+    cap = cv2.VideoCapture(BASE_DIR + '\\video\\复杂情况-混乱情况.mp4')  # 读入视频
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
     cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
