@@ -44,15 +44,14 @@ class laneDetect:
             img_show = np.repeat(img_prep[:, :, None], 3, axis=2)
 
         #--- 迭代更新 lane_xc
-        pixes = img_prep.nonzero()  # 所有非零像素
         for i in range(self.win_n):
             # 窗中心
             win_yc = self.lane_yc[i]                                # 第i层左右车道预测窗中心 y 坐标
             l_win_xc, r_win_xc = self.check_order(*self.porpose_win_xc(img_prep, i))      # 第i层左右车道预测窗中心 x 坐标
-            # l_win_xc, r_win_xc = self.check_order2(*self.porpose_win_xc(img_prep, i), pixes, win_yc) # 第i层左右车道预测窗中心 x 坐标
+            # l_win_xc, r_win_xc = self.check_order2(*self.porpose_win_xc(img_prep, i), img_prep, win_yc) # 第i层左右车道预测窗中心 x 坐标
             # 生成窗
-            l_win_pts = self.get_win(pixes, xc=l_win_xc, yc=win_yc)  # 左窗中所有像素点坐标 [n,2]
-            r_win_pts = self.get_win(pixes, xc=r_win_xc, yc=win_yc)  # 右窗
+            l_win_pts = self.get_win(img_prep, xc=l_win_xc, yc=win_yc)  # 左窗中所有像素点坐标 [n,2]
+            r_win_pts = self.get_win(img_prep, xc=r_win_xc, yc=win_yc)  # 右窗
             # 绘制窗
             if self.show:
                 cv2.rectangle(  img_show,
@@ -67,11 +66,11 @@ class laneDetect:
             r_det = len(r_win_pts) > self.pix_thr   # 检测到右车道线中点
 
             if l_det:
-                self.lane_xc[0, i] = int(np.mean(l_win_pts[:, 0]))  # 更新左车道线的 x 中心位置
+                self.lane_xc[0, i] = int(np.mean(l_win_pts))  # 更新左车道线的 x 中心位置
             else:
                 self.lane_xc[0, i] = l_win_xc
             if r_det:
-                self.lane_xc[1, i] = int(np.mean(r_win_pts[:, 0]))  # 更新右车道线的 x 中心位置
+                self.lane_xc[1, i] = int(np.mean(r_win_pts))  # 更新右车道线的 x 中心位置
             else:
                 self.lane_xc[1, i] = r_win_xc
             self.lane_flag[:, i] = [l_det, r_det]   # 更新检出标志位
@@ -169,15 +168,20 @@ class laneDetect:
                                             cv2.INTER_LINEAR)  # 透视变换
         return perspect_img
 
-    def get_win(self, pixes, xc, yc):
+
+    def get_win(self, img, xc, yc):
         """
-        从图中取出一个窗中所有像素点的位置, [n, 2(x, y)]
-        pixes: 一张图中所有非零像素坐标
+        从图中取出一个窗中所有像素点的x位置, [n, 1(x, )]
         """
-        py, px = pixes
-        idx = ( (py >= yc-self.win_h//2) & (py < yc + self.win_h//2) & \
-                (px >= xc-self.win_w//2) & (px < xc + self.win_w//2) )
-        return np.hstack([px[idx][:, None], py[idx][:, None]])
+        half_w = self.win_w // 2
+        half_h = self.win_h // 2
+        ylow = max(yc-half_h, 0)
+        yhigh = min(yc+half_h, self.frame_h)
+        xlow = min(max(xc-half_w, 0), self.frame_w)
+        xhigh = max(min(xc+half_w, self.frame_w), 0)
+        win = img[ylow:yhigh, xlow:xhigh]
+        good_x = win.nonzero()[1] + xc - self.win_w//2  # 非零像素 x 坐标
+        return good_x
 
     def check_order(self, l_xc, r_xc):
         """ 对 porpose_win_xc 得到的窗中心进行检查，避免两窗过于接近 """
@@ -190,18 +194,18 @@ class laneDetect:
                 l_xc = r_xc - self.road_w_pix
         return l_xc, r_xc
 
-    def check_order2(self, l_xc, r_xc, pixes, yc):
+    def check_order2(self, l_xc, r_xc, img, yc):
         """ 对 porpose_win_xc 得到的窗中心进行检查 """
         xc_mean = np.mean(self.lane_xc, axis=1)  # 窗xc的平均值
         error = xc_mean - [l_xc, r_xc]
         # 避免左窗在右车道线，右窗在更右侧或相反情况（检查左车道线左侧和右车道线右侧）
         if l_xc > self.frame_w//2:
-            win_pts = self.get_win(pixes, l_xc-self.road_w_pix, yc)
+            win_pts = self.get_win(img, l_xc-self.road_w_pix, yc)
             if len(win_pts) > self.pix_thr:
                 r_xc = l_xc
                 l_xc = l_xc-self.road_w_pix
         elif r_xc < self.frame_w//2:
-            win_pts = self.get_win(pixes, r_xc+self.road_w_pix, yc)
+            win_pts = self.get_win(img, r_xc+self.road_w_pix, yc)
             if len(win_pts) > self.pix_thr:
                 l_xc = r_xc
                 r_xc = r_xc+self.road_w_pix
@@ -338,7 +342,7 @@ if __name__ == '__main__':
     roadWidCm = 80      # 道路宽度 单位：cm
     roadWidPix = 660    # 透视变换后车道线像素数
     isShow = True       # 是否返回可视化图片
-    cap = cv2.VideoCapture(BASE_DIR + '\\video\\复杂情况-混乱情况.mp4')  # 读入视频
+    cap = cv2.VideoCapture(BASE_DIR + '\\video\\快速绕圈.mp4')  # 读入视频
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
     cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
