@@ -81,7 +81,7 @@ class Driver(object):
         """ [1D, 2N, 3P, 4R] """
         if isinstance(x, str):
             mode_dict = {'D':1, 'N':2, 'P':3, 'R':4}
-            x = mode_dict.get(x, default=0)
+            x = mode_dict.get(x, 0)
         assert x>=1 and x<=4, 'mode must in [1, 4]'
         if not rospy.is_shutdown():
             self.mode_pub.publish(x)

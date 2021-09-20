@@ -51,6 +51,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   Sensors.msg
+  BluetoothCtrMsg.msg
+  HilensMsg.msg
 )
 
 ## Generate services in the 'srv' folder
