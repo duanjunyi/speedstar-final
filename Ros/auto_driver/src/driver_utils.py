@@ -1,11 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 import time
 import rospy
 import numpy as np
 import math
 from std_msgs.msg import Int32
-from bluetooth_bridge.msg import Sensors
+from bluetooth_bridge.msg import Sensors, HilensMsg
 import threading
 
 def loop_idx(size):
@@ -33,6 +34,8 @@ class Driver(object):
     7. get_direction: 实际方向
     8. get_supersonic: 实际超声波距离
     9. get_sensors: 所有传感器信息
+    10. get_bias: 小车偏离路中心距离
+    11. get_objs: 目标检测结果
     """
     def __init__(self, cache_size=10, debug=True):
         self.Debug = debug
@@ -43,15 +46,20 @@ class Driver(object):
         self.beep_pub      = rospy.Publisher("/auto_driver/send/beep", Int32, queue_size=10)
         # 传感
         self.sensor_sub    = rospy.Subscriber('/vcu', Sensors, self.sensors_callback)
+        self.hilens_sub    = rospy.Subscriber('/hilens', HilensMsg, self.hilens_callback)
 
         self.cache_size = cache_size
         self.sensor_cache = [Sensors(), ] * self.cache_size
+        self.hilens_cache = [HilensMsg(), ] * self.cache_size
         self.loop_idx = loop_idx(self.cache_size)
         self.idx = 0
+        self.hi_loop_idx = loop_idx(self.cache_size)
+        self.hi_idx = 0
 
         self.ros_spin = threading.Thread(target = rospy.spin)
         self.ros_spin.start()
-        time.sleep(2)
+        time.sleep(1.5)
+        rospy.loginfo("[Driver]: Init" )
 
 
     #--- 设置
@@ -87,10 +95,23 @@ class Driver(object):
             if self.Debug:
                 rospy.loginfo("[Driver]: set beep to %d" % x )
 
-    #--- 读取传感器
+    #--- 回调函数
     def sensors_callback(self, data):
-        self.idx = self.loop_idx.next()
-        self.sensor_cache[self.idx] = data
+        tmp = self.loop_idx.next()
+        self.sensor_cache[tmp] = data
+        self.idx = tmp
+
+    def hilens_callback(self, data):
+        tmp = self.hi_loop_idx.next()
+        self.sensor_cache[tmp] = data
+        self.hi_idx = tmp
+
+    #--- 获取小车状态
+    def get_bias(self):
+        return self.hilens_cache[self.hi_idx].bias
+
+    def get_objs(self):
+        return self.hilens_cache[self.hi_idx]
 
     def get_acc(self):
         return  self.sensor_cache[self.idx].ax, \
