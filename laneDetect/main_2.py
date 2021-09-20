@@ -342,7 +342,7 @@ if __name__ == '__main__':
     roadWidCm = 80      # 道路宽度 单位：cm
     roadWidPix = 660    # 透视变换后车道线像素数
     isShow = True       # 是否返回可视化图片
-    cap = cv2.VideoCapture(BASE_DIR + '\\video\\快速绕圈.mp4')  # 读入视频
+    cap = cv2.VideoCapture(BASE_DIR + '\\video\\test1.mp4')  # 读入视频
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
     cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
