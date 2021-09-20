@@ -8,6 +8,7 @@ project(auto_driver)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  bluetooth_bridge
   geometry_msgs
   sensor_msgs
   std_msgs

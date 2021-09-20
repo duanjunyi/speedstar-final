@@ -14,6 +14,7 @@ topic_hilens = '/hilens'
 
 if __name__ == '__main__':
     rospy.init_node('hilens_receiver', anonymous=False)
+    print("[Hilens Node]: Init")
     pub_hilens = rospy.Publisher(topic_hilens, HilensMsg, queue_size=10)
     time.sleep(0.5)
 

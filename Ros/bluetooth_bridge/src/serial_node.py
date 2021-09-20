@@ -94,8 +94,8 @@ def callback_beep(message):
 def main(hz=100):
     global ser
     #--- node init
-    rospy.init_node('serial_port', anonymous=True)
-    print("[Init node]: serial_port")
+    rospy.init_node('serial_node', anonymous=True)
+    print("[Serial Node]: Init")
 
     #--- publish topic
     sensors_pub = rospy.Publisher(topic_sensors, Sensors, queue_size=10)

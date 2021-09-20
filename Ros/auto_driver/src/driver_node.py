@@ -1,12 +1,21 @@
-# !/usr/bin/python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import sys
+import signal
 import rospy
 import numpy as np
 import math
 from bluetooth_bridge.msg import Sensors
 from driver_utils import Driver
 import time
+
+def sigint_handler(signal, frame):
+    print('Terminated!')
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, sigint_handler)
+
 
 if __name__ == '__main__':
 
