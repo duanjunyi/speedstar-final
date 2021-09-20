@@ -110,8 +110,14 @@ class Driver(object):
     def get_bias(self):
         return self.hilens_cache[self.hi_idx].bias
 
-    def get_objs(self):
-        return self.hilens_cache[self.hi_idx]
+    def get_objs(self, index):  # index: ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
+        flag = self.hilens_cache[self.hi_idx].flag[index]
+        x_min = self.hilens_cache[self.hi_idx].x_min[index]
+        x_max = self.hilens_cache[self.hi_idx].x_max[index]
+        y_min = self.hilens_cache[self.hi_idx].y_min[index]
+        y_max = self.hilens_cache[self.hi_idx].y_max[index]
+        score = self.hilens_cache[self.hi_idx].score[index]
+        return flag, x_min, x_max, y_min, y_max, score
 
     def get_acc(self):
         return  self.sensor_cache[self.idx].ax, \
