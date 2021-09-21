@@ -95,15 +95,18 @@ class laneDetect:
             rx = np.polyval(self.lane_curve[1], self.frame_h)
             cen_pos = (lx + rx) / 2.0       # 车道中心线位置
             veh_pos = self.frame_w / 2.0    # 小车位置，目前定义为画面中心
-            self.bias = (veh_pos - cen_pos) * self.cm_per_pix
+            self.bias = (veh_pos - cen_pos)
+            return self.bias
         elif l_win_nums >= r_win_nums and l_win_nums>0:  # 只检出左车道线
-            cen_pos = np.polyval(self.lane_curve[0], self.frame_h)*self.cm_per_pix + self.road_w_cm / 2  # 车道中心线位置
-            veh_pos = self.frame_w / 2.0  * self.cm_per_pix # 小车位置，目前定义为画面中心
+            cen_pos = np.polyval(self.lane_curve[0], self.frame_h) + self.road_w_pix / 2  # 车道中心线位置
+            veh_pos = self.frame_w / 2.0 # 小车位置，目前定义为画面中心
             self.bias = veh_pos - cen_pos
+            return self.bias
         elif r_win_nums > l_win_nums:   # 只检出右车道线
-            cen_pos = np.polyval(self.lane_curve[1], self.frame_h)*self.cm_per_pix - self.road_w_cm / 2  # 车道中心线位置
-            veh_pos = self.frame_w / 2.0  * self.cm_per_pix # 小车位置，目前定义为画面中心
+            cen_pos = np.polyval(self.lane_curve[1], self.frame_h) - self.road_w_pix / 2  # 车道中心线位置
+            veh_pos = self.frame_w / 2.0 # 小车位置，目前定义为画面中心
             self.bias = veh_pos - cen_pos
+            return self.bias
 
         #--- 绘图
         if self.show:
@@ -153,7 +156,7 @@ class laneDetect:
             #    exit()
             return self.bias, result
 
-        return self.bias
+        return 0
 
 
     def prepocess(self, img):

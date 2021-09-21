@@ -47,7 +47,7 @@ def main():
     lane_pub  = rospy.Publisher("/lane_detect/bias", Float32, queue_size=10)
 
     while not rospy.is_shutdown():
-        ret, img = cap.read()  # TODO
+        ret, img = cap.read()
         if ret:
             bias = laneDet.spin(img)
             lane_pub.publish(bias)
