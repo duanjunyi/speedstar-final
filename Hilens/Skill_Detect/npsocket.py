@@ -51,7 +51,7 @@ class NumpySocket():
         self.port = port
         self.socket.bind((self.address, self.port))
         print('Socket bind complete')
-        self.socket.listen()
+        self.socket.listen(1)
         self.payload_size = 16  ### CHANGED
         self.data = b''
         self.conn_state = False  # 连接状态
