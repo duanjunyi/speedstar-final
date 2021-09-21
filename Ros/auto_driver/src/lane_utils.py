@@ -153,6 +153,9 @@ class laneDetect:
             #    exit()
             return self.bias, result
 
+        return self.bias
+
+
     def prepocess(self, img):
         """
         取下方区域，矫正畸变，二值化，透视变换
