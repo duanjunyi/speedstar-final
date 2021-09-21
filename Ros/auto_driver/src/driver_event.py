@@ -48,7 +48,16 @@ class FollowLaneEvent(DriverEvent):
 
 
 class RedStopEvent(DriverEvent):
-    """ 红灯事件 """
+    '''
+    红灯策略
+    is_start: 目标检测到红灯，四个条件需要同时满足：
+             (1)box面积大于0.1w*0.1h
+             (2)斑马线label的score>0.9
+             (3)斑马线位于图片的下方，即y_max<0.2h
+             (4)连续1个输出满足上述要求
+    is_end: is_start条件任意一个不满足则is_end，档位调为D
+    strategy: 直接刹车速度为0,速度小于2时档位调为P
+    '''
     def __init__(self, driver, scale_prop, y_limit, score_limit=0.5):
         """
         初始化
@@ -88,7 +97,17 @@ class RedStopEvent(DriverEvent):
 
 
 class GreenGoEvent(DriverEvent):
-    """ 红灯事件 """
+    """
+    红灯策略
+    is_start: 目标检测到绿灯，四个条件需要同时满足：
+             (1)box面积大于0.1w*0.1h
+             (2)斑马线label的score>0.9
+             (3)斑马线位于图片的下方，即y_max<0.2h
+             (4)连续1个输出满足上述要求
+             档位调为D
+    is_end: is_start条件任意一个不满足则is_end
+    strategy: 直接刹车速度为0
+    """
     def __init__(self, driver, scale_prop, y_limit, speed, score_limit=0.5):
         """
         初始化
@@ -142,7 +161,6 @@ class PedestrianEvent(DriverEvent):
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
-
 
     def is_start(self):
         width = 1280
@@ -243,5 +261,32 @@ class SpeedMinimumEvent(DriverEvent):
     def strategy(self):
         self.driver.set_speed(self.set_speed)
 
+
+class YellowBackEvent(DriverEvent):
+    '''
+    is_start:
+    '''
+    def __init__(self, driver, scale_prop, y_limit, speed, score_limit, range_limit):
+        super(YellowBackEvent,self).__init__(driver)
+        self.scale_prop = scale_prop
+        self.score_limit = score_limit
+        self.y_limit = y_limit
+        self.speed = speed
+        self.range_limit = range_limit
+
+    def is_start(self):
+        width = 1280
+        height = 720
+        flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(6)
+        scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
+        if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+            return True
+        return False
+
+    def is_end(self):
+        return True
+
+    def strategy(self):
+        return True
 
 
