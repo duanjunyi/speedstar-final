@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import rospy
 from driver_utils import Driver
-from driver_event import FollowLaneEvent
+from driver_event import *
 
 def main():
     #--- 小车驱动
@@ -10,7 +10,13 @@ def main():
 
     #--- 定义事件列表
     follow_lane_event = FollowLaneEvent(driver)
-    event_list = [follow_lane_event, ]
+    red_stop_event = RedStopEvent(driver, 0.01, 0.2, 0.9)
+    green_go_event = GreenGoEvent(driver, 0.01, 0.2, 50, 0.9)
+    pedestrian_event = PedestrianEvent(driver, 0.06, 0.6, 0.9)
+    speed_limited_event = SpeedLimitedEvent(driver, 0.02, 0.7, 10, 0.9)
+    speed_minimum_event = SpeedMinimumEvent(driver, 0.02, 0.7, 70, 0.9)
+    event_list = [follow_lane_event, red_stop_event, green_go_event, pedestrian_event, speed_limited_event,
+                  speed_minimum_event]
 
     #--- 主循环
     rate = rospy.Rate(100)  # 循环频率
