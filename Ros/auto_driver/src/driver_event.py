@@ -56,7 +56,7 @@ class RedStopEvent(DriverEvent):
         :param score_thr: 检测红灯的置信度阈值
         :param y_thr: 红灯高度阈值
         """
-        super(FollowLaneEvent, self).__init__(driver)
+        super(RedStopEvent, self).__init__(driver)
         self.area_thr = area_thr
         self.score_thr = score_thr
         self.y_thr = y_thr
@@ -90,7 +90,7 @@ class GreenGoEvent(DriverEvent):
         :param score_thr: 检测绿灯的置信度阈值
         :param y_thr: 绿灯高度阈值
         """
-        super(FollowLaneEvent, self).__init__(driver)
+        super(GreenGoEvent, self).__init__(driver)
         self.speed = speed
         self.area_thr = area_thr
         self.score_thr = score_thr
