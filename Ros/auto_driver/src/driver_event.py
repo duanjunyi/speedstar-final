@@ -75,11 +75,16 @@ class RedStopEvent(DriverEvent):
 
     def is_end(self):
         """ 事件是否终止 """
-        return not self.is_start()
+        if not self.is_start():
+            self.driver.set_mode('D')
+            return True
+        return False
 
     def strategy(self):
         """ 控制策略 """
         self.driver.set_speed(0)
+        if self.driver.get_speed() <= 2:
+            self.driver.set_mode('P')
 
 
 class GreenGoEvent(DriverEvent):
@@ -106,6 +111,7 @@ class GreenGoEvent(DriverEvent):
             area = (x_max - x_min) * (y_max - y_min)
             scale = area / (self.scale_prop * width * height)
             if scale >= 1 and y_max <= self.y_limit * height:
+                self.driver.set_mode('D')
                 return True
         return False
 
@@ -148,10 +154,15 @@ class PedestrianEvent(DriverEvent):
         return False
 
     def is_end(self):
-        return not self.is_start()
+        if not self.is_start():
+            self.driver.set_mode('D')
+            return True
+        return False
 
     def strategy(self):
         self.driver.set_speed(0)
+        if self.driver.get_speed() <= 2:
+            self.driver.set_mode('P')
 
 
 class SpeedLimitedEvent(DriverEvent):
