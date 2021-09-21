@@ -18,12 +18,86 @@ def callback_scan(scan):
     ranges = np.array(scan.ranges)  # [1440,]
     ranges[ranges>2.5] = 0
     angle = np.arange(len(scan.ranges)) * scan.angle_increment
-    px = ( np.sin(angle) * ranges * 100 ).astype(np.int32) + 260
-    py = ( np.cos(angle) * ranges * 100 ).astype(np.int32) + 260
+    px = ( np.cos(angle) * ranges * 100 ).astype(np.int32) + 260
+    py = ( np.sin(angle) * ranges * 100 ).astype(np.int32) + 260
     img[px, py] = 255
-    cv2.imshow('scan', img)
+    img_show = process(img)
+    cv2.imshow('scan', img_show)
     cv2.waitKey(5)
 
+def process(img):
+    img_show = np.dstack((img, img, img))
+    # 剪裁
+    img_roi = img[260-80:260+20, 260-80:260+80]
+    img_show_roi = img_show[260-80:260+20, 260-80:260+80]
+    cv2.rectangle(img_show, (170, 170), (350, 290), (0, 255, 0), 2)
+
+    # 霍夫变换检测直线
+    lines = cv2.HoughLines(img_roi, 4.5, np.pi/180, 70, 40)
+    if lines is None:
+        return img_show
+    lines = lines[:,0,:]
+    if len(lines)<2: # 判断：线数少于2
+        print('线数<2')
+        return img_show
+
+    # 分成左右两侧
+    sort_idx = np.argsort(lines[:,0]) # 按照 rho 排序
+    lines = lines[sort_idx]
+    d_rho = lines[1:, 0] - lines[:-1, 0] # (len-1,)
+    mid_idx = np.argmax(d_rho) + 1 # 找最大rho增量对应的idx作为分割点
+    if d_rho[mid_idx-1] < 30: # 判断：两堆之间差异不大
+        print('分不出两份')
+        return img_show
+    line1 = np.mean(lines[:mid_idx], axis=0, keepdims=False)
+    line2 = np.mean(lines[mid_idx:], axis=0, keepdims=False)
+    print(mid_idx)
+    drawline(img_show_roi, line1, (0,0,255))
+    drawline(img_show_roi, line2, (255,0,0))
+    print(lines)
+    #for line in lines:
+    #    drawline(img_show_roi, line, (0,0,255))
+    #for line in lines[mid_idx:]:
+     #   drawline(img_show_roi, line1, (255,0,0))
+
+    # 计算原点到过中心点的平行线的距离 rho
+    # center_pt = (80, 80)
+    theta = (line1[1] + line2[1]) / 2
+    if theta == 0:
+        rho = 80
+    elif theta < np.pi/2:  # y = k(x-80) + 80,  rho > 0
+        k = -np.cos(theta) / np.sin(theta)
+        rho = distance((0,0), a=k, b=-1,c=80-80*k)
+    elif theta == np.pi/2:
+        print('有障碍物')
+        return img_show
+    elif theta < np.pi: # rho < 0
+        k = -np.cos(theta) / np.sin(theta)
+        rho = -distance((0,0), a=k, b=-1,c=80-80*k)
+
+    # 如果小车在两车道线中间，计算位置偏差pos_bias，角度偏差ang_bias,<0表示偏左
+    if line1[0]<rho and line2[0]>rho:
+        pos_bias = np.abs(rho) - np.abs(line1[0]+line2[0])/2
+        ang_bias = np.mean(line1[1] + line2[1]) / np.pi * 180
+        ang_bias = ang_bias if ang_bias<90 else ang_bias-180
+        print('偏差 pos_bias=%5.2f, ang_bias=%5.2f' % (pos_bias, ang_bias))
+    return img_show
+
+def distance(pt, a, b, c):
+    """ 点 pt 到直线 ax+by+c=0 的距离"""
+    return np.abs( a*pt[0] + b*pt[1] + c) / np.sqrt(a**2 + b**2)
+
+def drawline(img, line, color, linewidth=2):
+    rho, theta = line
+    a = np.cos(theta)
+    b = np.sin(theta)
+    x0 = a*rho
+    y0 = b*rho
+    x1 = int(x0 + 1000*(-b))
+    y1 = int(y0 + 1000*(a))
+    x2 = int(x0 - 1000*(-b))
+    y2 = int(y0 - 1000*(a))
+    cv2.line(img, (x1,y1), (x2,y2), color, linewidth)
 
 def main():
     #--- node init
@@ -35,7 +109,6 @@ def main():
 
     rospy.spin()
 
+
 if __name__ == '__main__':
     main()
-
-
