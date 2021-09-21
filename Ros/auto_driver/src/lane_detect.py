@@ -37,6 +37,9 @@ isShow = False  # 是否返回可视化图片
 def main():
     rospy.init_node('lane_node', anonymous=True)
     cap = cv2.VideoCapture('/dev/video10')
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
+    cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
     print("[Lane Node]: Init")
     # 车道线检测对象
     laneDet = laneDetect(Mwarp, camMat, camDistortion, kerSz, grayThr, frameHeight, frameWidth, roiXRatio,

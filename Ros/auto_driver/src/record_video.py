@@ -6,10 +6,11 @@
 """
 import cv2
 import datetime
-from pathlib import Path
-BASE_DIR = Path(__file__).resolve().parent
-SAVE_DIR = BASE_DIR / 'out_videos'
-SAVE_DIR.mkdir(exist_ok=True)
+import os
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+SAVE_DIR = BASE_DIR + '/out_videos'
+os.mkdir(SAVE_DIR)
 
 
 def out_name():
@@ -18,13 +19,16 @@ def out_name():
 
 if __name__ == '__main__':
     cap = cv2.VideoCapture('/dev/video10')
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # 设置读入图像宽
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # 设置读入图像长
+    cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
     frame_cnt = 0
     while frame_cnt < 1000:  # 保存1000帧
         ret, frame = cap.read()
         if ret:
             if frame_cnt==0: # 为视频第一帧
                 frame_cnt += 1
-                out_file = str(SAVE_DIR / out_name())
+                out_file = str(SAVE_DIR + '/' + out_name())
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 height, width = frame.shape[:2]
                 out_writer = cv2.VideoWriter(out_file, fourcc, 24, (width, height), True)
@@ -36,7 +40,7 @@ if __name__ == '__main__':
 
 
     out_writer.release()
-    print(f'Save video at: {out_file}')
+    print('Save video at: %s' % out_file)
 
 
 
