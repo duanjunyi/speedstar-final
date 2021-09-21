@@ -42,16 +42,19 @@ def process(img):
         return img_show
 
     # 分成左右两侧
-    sort_idx = np.argsort(lines[:,0]) # 按照 rho 排序
+    lines_dist = np.abs(lines[:,0])
+    sort_idx = np.argsort(lines_dist) # 按照 dist 排序
     lines = lines[sort_idx]
-    d_rho = lines[1:, 0] - lines[:-1, 0] # (len-1,)
-    mid_idx = np.argmax(d_rho) + 1 # 找最大rho增量对应的idx作为分割点
-    if d_rho[mid_idx-1] < 30: # 判断：两堆之间差异不大
+    lines_dist = lines_dist[sort_idx]
+    d_dist = lines_dist[1:] - lines_dist[:-1] # (len-1,)
+    mid_idx = np.argmax(d_dist) + 1 # 找最大rho增量对应的idx作为分割点
+    if d_dist[mid_idx-1] < 30: # 判断：两堆之间差异不大
         print('分不出两份')
         return img_show
-    line1 = np.mean(lines[:mid_idx], axis=0, keepdims=False)
-    line2 = np.mean(lines[mid_idx:], axis=0, keepdims=False)
-    print(mid_idx)
+
+    line1 = meanline(lines[:mid_idx])
+    line2 = meanline(lines[mid_idx:])
+
     drawline(img_show_roi, line1, (0,0,255))
     drawline(img_show_roi, line2, (255,0,0))
     print(lines)
@@ -99,13 +102,26 @@ def drawline(img, line, color, linewidth=2):
     y2 = int(y0 - 1000*(a))
     cv2.line(img, (x1,y1), (x2,y2), color, linewidth)
 
+
+def meanline(lines):
+    """ 对线做平均 """
+    sign = 1 if lines[0, 1] < np.pi/2 else -1
+    idx = (np.abs(lines[:, 1] - lines[0, 1]) > 2).nonzero()[0]
+    lines[idx, 1] -= sign*np.pi
+    lines[:, 0] = np.abs(lines[:, 0])
+    mline = np.mean(lines, axis=0, keepdims=False)
+    sign = 1 if lines[0, 1] < np.pi/2 else -1
+    mline[0] = sign * mline[0]
+    return mline
+
+
 def main():
     #--- node init
     rospy.init_node('lidar_port', anonymous=True)
     print("[lidar_port]: Init")
 
     #--- subscriber topic
-    rospy.Subscriber(topic_scan, LaserScan, callback_scan)
+    rospy.Subscriber(topic_scan, LaserScan, callback_scan, 10)
 
     rospy.spin()
 
