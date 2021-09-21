@@ -88,7 +88,7 @@ class Application:
                 self.is_connected = False
                 self.server_sock.close()
                 self.pub_status.publish("EXCEPTION: " + str(e))
-                self.pub_bt_decode(BluetoothCtrMsg())
+                self.pub_bt_decode.publish(BluetoothCtrMsg())
 
             self.rate.sleep()
 
