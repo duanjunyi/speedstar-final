@@ -32,7 +32,7 @@ class NumpySocket():
         :return: None
         :rtype: None
         """
-        data = pickle.dumps(np_array)
+        data = pickle.dumps(np_array, protocol=2)
 
         # Send message length first
         message_size = str(len(data)).ljust(16).encode()
