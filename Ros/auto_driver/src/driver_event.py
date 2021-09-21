@@ -1,4 +1,4 @@
-# !/usr/bin/python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 import rospy
@@ -30,7 +30,8 @@ class FollowLaneEvent(DriverEvent):
         else:
             # ------------------- Kp,  Ki,  Kd
             self.controller = PID(5,  0.1, 0.1, setpoint=0, sample_time=0.01)
-            self.controller.output_limits = (0, 100)
+            self.controller.output_limits = (-3, 3)
+        self.direct = 50
 
     def is_start(self):
         """ 事件是否开始 """
@@ -43,8 +44,8 @@ class FollowLaneEvent(DriverEvent):
     def strategy(self):
         """ 控制策略 """
         bias = self.driver.get_bias()
-        direct = self.controller(bias)
-        self.driver.set_direction(direct)
+        self.direct += int(self.controller(bias))
+        self.driver.set_direction(self.direct)
 
 
 class RedStopEvent(DriverEvent):

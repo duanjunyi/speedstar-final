@@ -31,6 +31,5 @@ if __name__ == '__main__':
                     msg.x_max[label] = int(bbox[2])
                     msg.y_max[label] = int(bbox[3])
                     msg.score[label] = bbox[5]
-                msg.bias = bbox[6]
             pub_hilens.publish(msg)
 
