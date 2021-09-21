@@ -62,33 +62,47 @@ def callback_bluetooth(message):
     if flag_manul == 1:
         ser.write(message.data[0:8])
         ser.flush()
+        ser.write(message.data[0:8])
+        ser.flush()
 
 def callback_direction(message):
     driver_data[1] = chr(message.data)    # update global driver_data
     driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(''.join(driver_data))
+        msg = ''.join(driver_data)
+        ser.write(msg)
+        ser.flush()
+        ser.write(msg)
         ser.flush()
 
 def callback_speed(message):
     driver_data[2] = chr(message.data)    # update global driver_data
     driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(''.join(driver_data))
+        msg = ''.join(driver_data)
+        ser.write(msg)
+        ser.flush()
+        ser.write(msg)
         ser.flush()
 
 def callback_mode(message):
     driver_data[3] = chr(message.data)    # update global driver_data
     driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(''.join(driver_data))
+        msg = ''.join(driver_data)
+        ser.write(msg)
+        ser.flush()
+        ser.write(msg)
         ser.flush()
 
 def callback_beep(message):
     driver_data[5] = chr(message.data)    # update global driver_data
     driver_data[7] = calc_crc(driver_data)
     if flag_manul==0:
-        ser.write(''.join(driver_data))
+        msg = ''.join(driver_data)
+        ser.write(msg)
+        ser.flush()
+        ser.write(msg)
         ser.flush()
 
 def main(hz=100):
