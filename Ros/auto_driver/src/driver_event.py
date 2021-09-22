@@ -56,9 +56,10 @@ class FollowLaneEvent(DriverEvent):
     def strategy(self):
         """ 控制策略 """
         bias, slope = self.driver.get_lane()
+        bias = -bias
         # 限位
-        bias_sign = bias / np.abs(bias)
-        slope_sign = slope / np.abs(slope)
+        bias_sign = 1 if bias>=0 else -1
+        slope_sign = 1 if slope>=0 else -1
         gear_direct = (0, 25, 50, 75, 100)
         if np.abs(slope) <= 1.3:
             if np.abs(bias) >= 19.5:
@@ -71,10 +72,11 @@ class FollowLaneEvent(DriverEvent):
             return
 
     def set_direct(self):
-        self.idx = self.loop_idx.next()
-        self.driver.set_direction(self.direct_cache[self.idx])
-        self.direct_cache[self.idx] = self.direction
-        time.sleep(0.1)
+        while True:
+            self.idx = self.loop_idx.next()
+            self.driver.set_direction(self.direct_cache[self.idx])
+            self.direct_cache[self.idx] = self.direction
+            time.sleep(0.1)
 
 
 
