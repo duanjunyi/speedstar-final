@@ -3,6 +3,14 @@
 import rospy
 from driver_utils import Driver
 from driver_event import *
+import signal
+
+def sigint_handler(signal, frame):
+    print('Terminated!')
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, sigint_handler)
+
 
 def main():
     #--- 小车驱动

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import rospy
+import time
 from PID import PID
 import threading
 
@@ -27,8 +28,9 @@ class FollowLaneEvent(DriverEvent):
     def __init__(self, driver, timedelay):
         super(FollowLaneEvent, self).__init__(driver)
         self.timedelay = timedelay
+        self.direction_last = 50
         self.direction = 50
-        self.timer = threading.Timer(self.timedelay, driver.set_direction, (self.direction, ))
+        self.timer = threading.Thread(target = self.set_direct)
         self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
 
     def is_start(self):
@@ -48,9 +50,18 @@ class FollowLaneEvent(DriverEvent):
         if np.abs(slope) >= 1.5:
             slope = slope / np.abs(slope) * 1.5
         # 分段
-        direct_step = np.round(bias / 4 + slope / 0.3)
-        self.direction = 50 + 5 * direct_step
+        direct_step = bias / 4 + slope / 0.3
+        self.direction = int( 50 + 5 * direct_step )
 
+    def set_direct(self):
+        start = time.time()
+        while True:
+            if time.time() - start < 1:
+                time.sleep(0.1)
+            else:
+                start = time.time()
+                self.driver.set_direction(self.direction_last)
+                self.direction_last = self.direction
 
 class FollowLidarEvent(DriverEvent):
     '''
