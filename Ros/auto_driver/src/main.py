@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import rospy
+import sys
 from driver_utils import Driver
 from driver_event import *
 import signal
@@ -15,7 +16,7 @@ signal.signal(signal.SIGINT, sigint_handler)
 def main():
     #--- 小车驱动
     driver = Driver()
-
+    driver.set_mode('D')
     #--- 定义事件列表
     follow_lane_event = FollowLaneEvent(driver, 1)
     red_stop_event = RedStopEvent(driver, 0.01, 0.2, 0.9)

@@ -61,6 +61,7 @@ class Driver(object):
         self.lane_idx = 0
         self.ros_spin = threading.Thread(target = rospy.spin)
         self.ros_spin.start()
+        self.ros_spin.setDaemon(True)
         time.sleep(1.5)
         rospy.loginfo("[Driver]: Init" )
 
