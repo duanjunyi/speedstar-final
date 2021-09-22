@@ -6,7 +6,12 @@ import time
 from PID import PID
 import threading
 
-
+def loop_idx(size):
+    """ 生成循环索引 """
+    idx = 0
+    while True:
+        yield idx
+        idx = 0 if idx>=size-1 else idx+1
 
 class DriverEvent(object):
     """ 事件基类 """
@@ -28,14 +33,21 @@ class FollowLaneEvent(DriverEvent):
     def __init__(self, driver, timedelay):
         super(FollowLaneEvent, self).__init__(driver)
         self.timedelay = timedelay
-        self.direction_last = 50
         self.direction = 50
+        self.direct_cache = np.full((10, ), 50, dtype=int)
+        self.loop_idx = loop_idx(10)
+        self.idx = 0
         self.timer = threading.Thread(target = self.set_direct)
+        self.timer.setDaemon(True)
         self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
+
 
     def is_start(self):
         """ 事件是否开始 """
         return True
+
+    def __del__(self):
+        self.flag = False
 
     def is_end(self):
         """ 事件是否终止 """
@@ -45,23 +57,26 @@ class FollowLaneEvent(DriverEvent):
         """ 控制策略 """
         bias, slope = self.driver.get_lane()
         # 限位
-        if np.abs(bias) >= 20:
-            bias = bias / np.abs(bias) * 20
-        if np.abs(slope) >= 1.5:
-            slope = slope / np.abs(slope) * 1.5
-        # 分段
-        direct_step = bias / 4 + slope / 0.3
-        self.direction = int( 50 + 5 * direct_step )
+        bias_sign = bias / np.abs(bias)
+        slope_sign = slope / np.abs(slope)
+        gear_direct = (0, 25, 50, 75, 100)
+        if np.abs(slope) <= 1.3:
+            if np.abs(bias) >= 19.5:
+                bias = bias_sign * 19.5
+            gear = int((bias + 19.5) / 8)
+            self.direction = gear_direct[gear]
+            return
+        else:
+            self.direction = slope_sign * 50 + 50
+            return
 
     def set_direct(self):
-        start = time.time()
-        while True:
-            if time.time() - start < 1:
-                time.sleep(0.1)
-            else:
-                start = time.time()
-                self.driver.set_direction(self.direction_last)
-                self.direction_last = self.direction
+        self.idx = self.loop_idx.next()
+        self.driver.set_direction(self.direct_cache[self.idx])
+        self.direct_cache[self.idx] = self.direction
+        time.sleep(0.1)
+
+
 
 class FollowLidarEvent(DriverEvent):
     '''

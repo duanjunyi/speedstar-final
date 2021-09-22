@@ -49,8 +49,8 @@ class laneDetect:
         for i in range(self.win_n):
             # 窗中心
             win_yc = self.lane_yc[i]                                # 第i层左右车道预测窗中心 y 坐标
-            l_win_xc, r_win_xc = self.check_order(*self.porpose_win_xc(img_prep, i))      # 第i层左右车道预测窗中心 x 坐标
-            # l_win_xc, r_win_xc = self.check_order2(*self.porpose_win_xc(img_prep, i), img_prep, win_yc) # 第i层左右车道预测窗中心 x 坐标
+            # l_win_xc, r_win_xc = self.check_order(*self.porpose_win_xc(img_prep, i))      # 第i层左右车道预测窗中心 x 坐标
+            l_win_xc, r_win_xc = self.check_order2(*self.porpose_win_xc(img_prep, i), img_prep, win_yc) # 第i层左右车道预测窗中心 x 坐标
             # 生成窗
             l_win_pts = self.get_win(img_prep, xc=l_win_xc, yc=win_yc)  # 左窗中所有像素点坐标 [n,2]
             r_win_pts = self.get_win(img_prep, xc=r_win_xc, yc=win_yc)  # 右窗
@@ -315,10 +315,10 @@ class laneDetect:
         """ 更新拟合曲线，防止曲线突变 """
         if self.lane_curve[side] is None:
             self.lane_curve[side] = curve_new
-        diff = self.lane_curve[side][1] * curve_new[1]  # y=0时的梯度 dx/dy 不能突变
-        centers = np.sum(self.lane_flag[side])          # 检出点数
-        if diff < -0 and centers < 10:
-            return
+        # diff = self.lane_curve[side][1] * curve_new[1]  # y=0时的梯度 dx/dy 不能突变
+        # centers = np.sum(self.lane_flag[side])          # 检出点数
+        # if diff < -0 and centers < 10:
+        #     return
         # ymid = - curve_new[1] / curve_new[0] / 2
         # cnt = 0
         self.lane_curve[side] = curve_new
