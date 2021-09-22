@@ -54,6 +54,7 @@ add_message_files(
   BluetoothCtrMsg.msg
   HilensMsg.msg
   LaneMsg.msg
+  BoardMsg.msg
 )
 
 ## Generate services in the 'srv' folder

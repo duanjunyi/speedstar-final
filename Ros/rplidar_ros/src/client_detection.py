@@ -77,7 +77,7 @@ def main():
 
         obstacle_detection_pub.publish(lidar_msg)
 
-        rospy.loginfo("publish:前方60°范围，%fm内障碍物xinxi %d", distance_obs,lidar_msg)
+        rospy.loginfo("publish:前方60°范围，%fm内障碍物信息 %d", distance_obs, lidar_msg)
 
 if __name__ == '__main__':
     main()
