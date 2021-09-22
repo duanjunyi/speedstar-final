@@ -66,6 +66,8 @@ def process(img):
     line1 = meanline(lines[:mid_idx])
     line2 = meanline(lines[mid_idx:])
 
+
+
     drawline(img_show_roi, line1, (0,0,255))
     drawline(img_show_roi, line2, (255,0,0))
     #print(lines)
@@ -89,14 +91,18 @@ def process(img):
         k = -np.cos(theta) / np.sin(theta)
         rho = -distance((0,0), a=k, b=-1,c=80-80*k)
 
+
+
+
     # 如果小车在两车道线中间，计算位置偏差pos_bias，角度偏差ang_bias,<0表示偏左
-    if line1[0]<rho and line2[0]>rho:
-        pos_bias = np.abs(rho) - np.abs(line1[0]+line2[0])/2
-        ang_bias = np.mean(line1[1] + line2[1]) / np.pi * 180
-        ang_bias = ang_bias if ang_bias<90 else ang_bias-180
+    if np.abs(line1[0]) < np.abs(rho) and np.abs(line2[0]) > np.abs(rho):
+        pos_bias = np.abs(rho) - np.abs(line1[0] + line2[0]) / 2
+        ang_bias = (line1[1] + line2[1]) / 2 / np.pi * 180
+        ang_bias = ang_bias if ang_bias < 90 else ang_bias - 180
+        flag = 1
         bias = pos_bias
-        angle = ang_bias
-        print('偏差 pos_bias=%5.2f, ang_bias=%5.2f' % (pos_bias, ang_bias))
+        angle = - ang_bias
+        # print('偏差 pos_bias=%5.2f, ang_bias=%5.2f' % (pos_bias, ang_bias))
     return img_show
 
 def distance(pt, a, b, c):
