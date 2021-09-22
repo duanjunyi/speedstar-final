@@ -5,6 +5,8 @@ import rospy
 import time
 from PID import PID
 import threading
+from FuzzyCtr import FollowLineCtr
+
 
 def loop_idx(size):
     """ 生成循环索引 """
@@ -37,6 +39,7 @@ class FollowLaneEvent(DriverEvent):
         self.direct_cache = np.full((10, ), 50, dtype=int)
         self.loop_idx = loop_idx(10)
         self.idx = 0
+        self.controller = FollowLineCtr
         self.timer = threading.Thread(target = self.set_direct)
         self.timer.setDaemon(True)
         self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
@@ -57,19 +60,20 @@ class FollowLaneEvent(DriverEvent):
         """ 控制策略 """
         bias, slope = self.driver.get_lane()
         bias = -bias
+        self.direction = self.controller.control(bias, slope)
         # 限位
-        bias_sign = 1 if bias>=0 else -1
-        slope_sign = 1 if slope>=0 else -1
-        gear_direct = (0, 25, 50, 75, 100)
-        if np.abs(slope) <= 1.3:
-            if np.abs(bias) >= 19.5:
-                bias = bias_sign * 19.5
-            gear = int((bias + 19.5) / 8)
-            self.direction = gear_direct[gear]
-            return
-        else:
-            self.direction = slope_sign * 50 + 50
-            return
+        # bias_sign = 1 if bias>=0 else -1
+        # slope_sign = 1 if slope>=0 else -1
+        # gear_direct = (0, 20, 50, 75, 100)
+
+        #     if np.abs(bias) >= 19.5:
+        #         bias = bias_sign * 19.5
+        #     gear = int((bias + 19.5) / 8)
+        #     self.direction = gear_direct[gear]
+        #     return
+        # if np.abs(slope) > 1.5:
+        #     self.direction = slope_sign * 50 + 50
+        #     return
 
     def set_direct(self):
         while True:

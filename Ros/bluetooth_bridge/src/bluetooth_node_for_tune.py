@@ -44,7 +44,7 @@ class Application:
 
     # 保存数据
                 # direction, speed, mode, bias, slope
-    ctr_data = np.array([50, 0, 3, 0, 0])
+    ctr_data = np.array([50, 0, 3, 0, 0]).astype(float)
     data_record = []
 
     def __init__(self):
@@ -112,7 +112,7 @@ class Application:
     def save_data_callback(self, msg):
         self.ctr_data[3] = msg.bias
         self.ctr_data[4] = msg.slope
-        self.data_record.append(self.ctr_data)
+        self.data_record.append(self.ctr_data.copy())
 
 
     def sigint_handler(self, signal, frame):
