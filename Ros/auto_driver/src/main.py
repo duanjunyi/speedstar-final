@@ -9,7 +9,7 @@ def main():
     driver = Driver()
 
     #--- 定义事件列表
-    follow_lane_event = FollowLaneEvent(driver)
+    follow_lane_event = FollowLaneEvent(driver, 1)
     red_stop_event = RedStopEvent(driver, 0.01, 0.2, 0.9)
     green_go_event = GreenGoEvent(driver, 0.01, 0.2, 50, 0.9)
     pedestrian_event = PedestrianEvent(driver, 0.06, 0.6, 0.9)

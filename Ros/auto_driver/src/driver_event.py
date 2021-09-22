@@ -1,8 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
+import numpy as np
 import rospy
 from PID import PID
+import threading
+
 
 
 class DriverEvent(object):
@@ -22,16 +24,12 @@ class DriverEvent(object):
 
 class FollowLaneEvent(DriverEvent):
     """ 循线事件 """
-    def __init__(self, driver, controller=None):
+    def __init__(self, driver, timedelay):
         super(FollowLaneEvent, self).__init__(driver)
-        # 定义控制器
-        if controller is not None:
-            self.controller = controller
-        else:
-            # ------------------- Kp,  Ki,  Kd
-            self.controller = PID(5,  0.1, 0.1, setpoint=0, sample_time=0.01)
-            self.controller.output_limits = (-3, 3)
-        self.direct = 50
+        self.timedelay = timedelay
+        self.direction = 50
+        self.timer = threading.Timer(self.timedelay, driver.set_direction, (self.direction, ))
+        self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
 
     def is_start(self):
         """ 事件是否开始 """
@@ -43,9 +41,26 @@ class FollowLaneEvent(DriverEvent):
 
     def strategy(self):
         """ 控制策略 """
-        bias = self.driver.get_bias()
-        self.direct += int(self.controller(bias))
-        self.driver.set_direction(self.direct)
+        bias, slope = self.driver.get_lane()
+        # 限位
+        if np.abs(bias) >= 20:
+            bias = bias / np.abs(bias) * 20
+        if np.abs(slope) >= 1.5:
+            slope = bias / np.abs(slope) * 1.5
+        # 分段
+        direct_step = np.round(bias / 4 + slope / 0.3)
+        self.direction = 50 + 5 * direct_step
+
+
+class FollowLidarEvent(DriverEvent):
+    '''
+    is_start: 雷达检测到挡板
+    is_end: 雷达没有检测到挡板
+    strategy:
+    '''
+    def __init__(self, driver):
+        super(FollowLidarEvent, self).__init__(driver)
+
 
 
 class RedStopEvent(DriverEvent):
