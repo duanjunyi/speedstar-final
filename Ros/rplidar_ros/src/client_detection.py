@@ -62,7 +62,7 @@ def main():
 
     
     #--- publisher topic
-    obstacle_detection_pub = rospy.Publisher('/is_obstacle', Int32, 10)
+    obstacle_detection_pub = rospy.Publisher('/lida/is_obstacle', Int32, queue_size = 100)
     rate = rospy.Rate(5)
     rospy.Subscriber(topic_scan, LaserScan, callback_scan)
     thread_spin = threading.Thread(target = rospy.spin)
