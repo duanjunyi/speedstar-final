@@ -13,7 +13,7 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 # 图片路径
 # img_path = BASE_DIR / 'chessboard1.png'
-img_path = BASE_DIR / 'video/快速绕圈.mp4'
+img_path = BASE_DIR / 'video/test3.mp4'
 
 def imread(img_path):
     """ 读入图片或视频第一帧 """
@@ -92,9 +92,8 @@ if __name__ == '__main__':
             pts_cnt = [0, 0]
         elif c in [ord('d'), ord('D')]:     # d 重绘目标点
             img_dst = np.zeros_like(img)
-            pts_cnt[100] = 0
+            pts_cnt[1] = 0
         elif c in [ord('n'), ord('N')]:
-            print(MWarp)
             ret, img = cap.read()
             if ret:
                 img_src = img

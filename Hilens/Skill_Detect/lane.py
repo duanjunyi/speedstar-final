@@ -39,7 +39,7 @@ class laneDetect:
 
     def spin(self, img):
         #--- 校正，二值化，透视变化
-        img_prep = self.prepocess(img)
+        img_prep = self.(img)
         if self.show:
             img_show = np.repeat(img_prep[:, :, None], 3, axis=2)
 
@@ -153,7 +153,7 @@ class laneDetect:
             #    exit()
             return self.bias, result
 
-    def prepocess(self, img):
+    def preprocess(self, img):
         """
         取下方区域，矫正畸变，二值化，透视变换
         """

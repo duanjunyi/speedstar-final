@@ -7,6 +7,7 @@
 import cv2
 import datetime
 import os
+from cap_init import CapInit
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 SAVE_DIR = BASE_DIR + '/out_videos'
@@ -18,10 +19,8 @@ def out_name():
 
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture('/dev/video10')
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # 设置读入图像宽
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # 设置读入图像长
-    cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
+    cap = CapInit()
+
     frame_cnt = 0
     while frame_cnt < 1000:  # 保存1000帧
         ret, frame = cap.read()

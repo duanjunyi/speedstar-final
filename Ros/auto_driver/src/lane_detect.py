@@ -3,15 +3,16 @@
 from lane_utils import laneDetect
 import numpy as np
 import cv2
-from std_msgs.msg import Float32
+from bluetooth_bridge.msg import LaneMsg
 import rospy
+from cap_init import CapInit
 
 # 初始化车道线检测常量
 frameWidth = 1280  # 宽
 frameHeight = 720  # 高
 # 透视变换
-src_points = np.array([[6, 716], [8, 342], [1263, 363], [1275, 717]], dtype="float32")
-dst_points = np.array([[524, 714], [11, 345], [1271, 348], [762, 710]], dtype="float32")
+src_points = np.array([[6, 356], [1274, 360], [3, 716], [1275, 715]], dtype="float32")
+dst_points = np.array([[19, 234], [1268, 89], [513, 712], [780, 709]], dtype="float32")
 Mwarp = cv2.getPerspectiveTransform(src_points, dst_points)  # 透视变换矩阵计算
 #相机内参
 camMat = np.array([[6.678151103217834e+02, 0, 6.430528691213178e+02],
@@ -30,27 +31,25 @@ pixThr = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声�
 roadWidCm = 80  # 道路宽度 单位：cm
 roadWidPix = 450  # 透视变换后车道线像素数
 isShow = False  # 是否返回可视化图片
-
+vip = 5
 
 def main():
     rospy.init_node('lane_node', anonymous=True)
-    cap = cv2.VideoCapture('/dev/video10')
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
-    cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
+    cap = CapInit()
+
     print("[Lane Node]: Init")
     # 车道线检测对象
     laneDet = laneDetect(Mwarp, camMat, camDistortion, kerSz, grayThr, frameHeight, frameWidth, roiXRatio,
-                winWidth, winNum, winThr, pixThr, roadWidCm, roadWidPix, isShow)  # 初始化车道线检测
+                winWidth, winNum, winThr, pixThr, roadWidCm, roadWidPix, isShow, vip)  # 初始化车道线检测
 
     #--- publish topic
-    lane_pub  = rospy.Publisher("/lane_detect/bias", Float32, queue_size=10)
+    lane_pub  = rospy.Publisher("/lane_detect", LaneMsg, queue_size=10)
 
     while not rospy.is_shutdown():
         ret, img = cap.read()
         if ret:
-            bias = laneDet.spin(img)
-            lane_pub.publish(bias)
+            bias, slope = laneDet.spin(img)
+            lane_pub.publish(LaneMsg(bias=bias, slope=slope))
 
 if __name__ == '__main__':
     main()

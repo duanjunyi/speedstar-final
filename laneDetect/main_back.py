@@ -94,7 +94,7 @@ class camera:
         ret, img = self.cap.read()  # 读入图片
         if ret == True:
             #--- 校正，二值化，透视变化
-            binary_warped = self.prepocess(img)
+            binary_warped = self.preprocess(img)
             binary_show = binary_warped.copy()
             self.win_height = int(binary_warped.shape[0] * roiXRatio / nwindows)  # 窗的高度
             h, w = binary_warped.shape[:2]
@@ -198,7 +198,7 @@ class camera:
             cv2.imshow('result', result)
             cv2.waitKey(1)
 
-    def prepocess(self, img):
+    def preprocess(self, img):
         """
         取下方区域，矫正畸变，二值化，透视变换
         """
