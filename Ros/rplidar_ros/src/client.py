@@ -121,7 +121,7 @@ def main():
     print("[lidar_port]: Init")
 
     #--- subscriber topic
-    rospy.Subscriber(topic_scan, LaserScan, callback_scan, 10)
+    rospy.Subscriber(topic_scan, LaserScan, callback_scan)
 
     rospy.spin()
 
