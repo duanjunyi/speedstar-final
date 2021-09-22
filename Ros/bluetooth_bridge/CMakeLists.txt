@@ -53,6 +53,7 @@ add_message_files(
   Sensors.msg
   BluetoothCtrMsg.msg
   HilensMsg.msg
+  LaneMsg.msg
 )
 
 ## Generate services in the 'srv' folder

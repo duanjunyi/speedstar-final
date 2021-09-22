@@ -34,7 +34,7 @@ $ bash ./setup.sh
     7. get_direction: 实际方向
     8. get_supersonic: 实际超声波距离
     9. get_sensors: 所有传感器信息
-    10. get_bias: 小车偏离路中心距离
+    10. get_lane: 小车偏离路中心距离
     11. get_objs: 目标检测结果
 ```
 

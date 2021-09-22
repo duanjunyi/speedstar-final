@@ -46,7 +46,7 @@ class FollowLaneEvent(DriverEvent):
         if np.abs(bias) >= 20:
             bias = bias / np.abs(bias) * 20
         if np.abs(slope) >= 1.5:
-            slope = bias / np.abs(slope) * 1.5
+            slope = slope / np.abs(slope) * 1.5
         # 分段
         direct_step = np.round(bias / 4 + slope / 0.3)
         self.direction = 50 + 5 * direct_step
