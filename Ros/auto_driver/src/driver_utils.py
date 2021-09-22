@@ -6,7 +6,7 @@ import rospy
 import numpy as np
 import math
 from std_msgs.msg import Int32, Float32
-from bluetooth_bridge.msg import Sensors, HilensMsg
+from bluetooth_bridge.msg import Sensors, HilensMsg, LaneMsg
 import threading
 
 def loop_idx(size):
@@ -47,12 +47,12 @@ class Driver(object):
         # 传感
         self.sensor_sub    = rospy.Subscriber('/vcu', Sensors, self.sensors_callback)
         self.hilens_sub    = rospy.Subscriber('/hilens', HilensMsg, self.hilens_callback)
-        self.lane_sub      = rospy.Subscriber('/lane_detect/bias', Float32, self.lane_callback)
+        self.lane_sub      = rospy.Subscriber('/lane_detect', LaneMsg, self.lane_callback)
 
         self.cache_size = cache_size
         self.sensor_cache = [Sensors(), ] * self.cache_size
         self.hilens_cache = [HilensMsg(), ] * self.cache_size
-        self.lane_cache = np.zeros(self.cache_size)
+        self.lane_cache = [LaneMsg(), ] * self.cache_size
         self.loop_idx = loop_idx(self.cache_size)
         self.hi_loop_idx = loop_idx(self.cache_size)
         self.lane_loop_idx = loop_idx(self.cache_size)
@@ -111,12 +111,13 @@ class Driver(object):
 
     def lane_callback(self, data):
         tmp = self.lane_loop_idx.next()
-        self.lane_cache[tmp] = data.data
+        self.lane_cache[tmp] = data
         self.lane_idx = tmp
 
     #--- 获取小车状态
-    def get_bias(self):
-        return self.lane_cache[self.lane_idx]
+    def get_lane(self):
+        return  self.lane_cache[self.lane_idx].bias, \
+                self.lane_cache[self.lane_idx].slope
 
     def get_objs(self, index):  # index: ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
         flag = self.hilens_cache[self.hi_idx].flag[index]
