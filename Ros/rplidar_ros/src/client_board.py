@@ -15,6 +15,7 @@ imSize = (520, 520)
 flag = 0
 bias = 0
 angle = 0
+isShow = True
 
 """ sub topics """
 topic_scan = "/scan"
@@ -26,11 +27,14 @@ def callback_scan(scan):
     px = ( np.cos(angle) * ranges * 100 ).astype(np.int32) + 260
     py = ( np.sin(angle) * ranges * 100 ).astype(np.int32) + 260
     img[px, py] = 255
-    img_show = process(img)
-    cv2.imshow('scan', img_show)
-    cv2.waitKey(5)
+    if isShow:
+        img_show = process(img)
+        cv2.imshow('scan', img_show)
+        cv2.waitKey(5)
+
 
 def process(img):
+
     global flag
     global bias
     global angle
@@ -45,13 +49,14 @@ def process(img):
     lines = cv2.HoughLines(img_roi, 4.5, np.pi/180, 70, 40)
     if lines is None:
         return img_show
+
     lines = lines[:,0,:]
     if len(lines)<2: # 判断：线数少于2
         print('线数<2')
         flag = 0
         return img_show
 
-    # 分成左右两侧
+    # 根据rho的绝对值，分成左右两侧
     lines_dist = np.abs(lines[:,0])
     sort_idx = np.argsort(lines_dist) # 按照 dist 排序
     lines = lines[sort_idx]
@@ -63,49 +68,40 @@ def process(img):
         flag = 0
         return img_show
 
+    # 计算两堆线的角平分线
     line1 = meanline(lines[:mid_idx])
     line2 = meanline(lines[mid_idx:])
 
+    # 可视化
+    if isShow:
+        drawline(img_show_roi, line1, (0,0,255))
+        drawline(img_show_roi, line2, (255,0,0))
+        print(lines)
 
+    #--- 左右两条线的锐角平分线
+    line_mid = meanline(np.vstack([line1, line2]))
+    rho, theta = line_mid
 
-    drawline(img_show_roi, line1, (0,0,255))
-    drawline(img_show_roi, line2, (255,0,0))
-    print(lines)
-    #for line in lines:
-    #    drawline(img_show_roi, line, (0,0,255))
-    #for line in lines[mid_idx:]:
-     #   drawline(img_show_roi, line1, (255,0,0))
+    #--- 计算中心点到两直线的平分线的距离 pos_bias
+    c_pt = (80, 80) # (x, y)
+    # 直线方程 sin(theta)y + cos(theta)x - rho = 0
+    # 乘以 +-1 使得x前系数为正，这样代入 c_pt 后计算出的值能反应出偏差
+    # 正表示，c_pt 在线右边，负表示在左边
+    cos_th = np.cos(theta)
+    if cos_th == 0:  # 直线水平
+        pos_bias = 65535  # 表示障碍物
+    else:
+        sign = 1 if cos_th > 0 else -1
+        pos_bias = sign * ( np.sin(theta)*c_pt[1] + np.cos(theta)*c_pt[0] - rho )
 
-    # 计算原点到过中心点的平行线的距离 rho
-    # center_pt = (80, 80)
-    theta = (line1[1] + line2[1]) / 2
-    if theta == 0:
-        rho = 80
-    elif theta < np.pi/2:  # y = k(x-80) + 80,  rho > 0
-        k = -np.cos(theta) / np.sin(theta)
-        rho = distance((0,0), a=k, b=-1,c=80-80*k)
-    elif theta == np.pi/2:
-        print('有障碍物')
-        return img_show
-    elif theta < np.pi: # rho < 0
-        k = -np.cos(theta) / np.sin(theta)
-        rho = -distance((0,0), a=k, b=-1,c=80-80*k)
-
-    # 取 line1 和 line2 锐夹角的角平分线
-    if np.abs(line1[0]) < np.abs(rho) and np.abs(line2[0]) > np.abs(rho):
-        line_mid = meanline(np.vstack([line1, line2]))
-        pos_bias = np.abs(rho) - np.abs(line_mid[0])
-        # 将line_mid头朝上
-        if line_mid[1]>np.pi/2:
-            line_mid[1] -= np.pi
-            line_mid[0] = -line_mid[0]
-        ang_bias = -line_mid[1]
-        print('偏差 pos_bias=%5.2f, ang_bias=%5.2f' % (pos_bias, ang_bias))
+    #--- 计算角度偏差 = line_mid的角度
+    # 将line_mid的角度映射到 -pi/2 ~ pi/2
+    if theta > np.pi/2:
+        theta = theta - np.pi
+    ang_bias = theta
+    print('偏差 pos_bias=%5.2f, ang_bias=%5.2f' % (pos_bias, ang_bias))
     return img_show
 
-def distance(pt, a, b, c):
-    """ 点 pt 到直线 ax+by+c=0 的距离"""
-    return np.abs( a*pt[0] + b*pt[1] + c) / np.sqrt(a**2 + b**2)
 
 def drawline(img, line, color, linewidth=2):
     rho, theta = line
@@ -121,21 +117,20 @@ def drawline(img, line, color, linewidth=2):
 
 
 def meanline(lines):
-    """ 对线做平均 """
-    # 判断线是否是接近竖直，如果不是，可以直接平均
-    if np.all(np.logical_or(lines[:, 1] > np.pi*4/5, lines[:, 1] < np.pi/5)):
-        # 接近竖直的线，全转化为头朝上
-        idx = (lines[:, 1] > np.pi/2).nonzero()[0]
-        lines[idx, 1] -= np.pi
-        lines[idx, 0] = -lines[idx, 0]
-        # 进行平均
-        mline = np.mean(lines, axis=0, keepdims=False)
-        # 平均完后，可能会出现 <0 的情况
-        if mline[1] < 0:
-            mline[1] += np.pi
-            mline[0] = -mline[0]
-    else:
-        mline = np.mean(lines, axis=0, keepdims=False)
+    """ 计算线的锐角平分线 """
+    #--- 判断线簇中，是否有夹角为钝角，若有则反向
+    n = len(lines)
+    sort_idx = np.argsort(lines[:, 1]) # 按照角度排序
+    min_angle = lines[sort_idx[0], 1]
+    inv_idx =  (lines[:, 1] - min_angle > np.pi/2).nonzero()[0] # 夹角为钝角的idx
+    lines[inv_idx, 1] -= np.pi              # 将这些射线进行反向
+    lines[inv_idx, 0] = -lines[inv_idx, 0]
+    #--- 计算锐角角平分线
+    mline = np.mean(lines, axis=0, keepdims=False)
+    # 平均完后，可能会出现 <0 的情况，规范化到 0~pi
+    if mline[1] < 0:
+        mline[1] += np.pi
+        mline[0] = -mline[0]
 
     return mline
 
@@ -157,7 +152,6 @@ def main():
 
     while not rospy.is_shutdown():
         # --- subscriber topic
-
         rate.sleep()
         board_detection_pub.publish(BoardMsg(flag = flag, bias = bias, angle = angle))
         rospy.loginfo("flag = %d, bias = %4.2f, angle = %4.2f", flag, bias, angle)
