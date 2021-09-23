@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import rospy
 import sys
 import time
@@ -8,6 +11,8 @@ from bluetooth_bridge.msg import BoardMsg
 import threading
 import cv2
 
+def rad2deg(rad):
+    return rad / np.pi * 180
 
 class lidar_node():
     """ 激光雷达检测障碍物和挡板类
@@ -51,7 +56,7 @@ class lidar_node():
         self.obj_det() # 更新障碍物obj_exist
         self.lidar_pub.publish(BoardMsg(    flag = self.board_exist,
                                             bias = self.pos_bias,
-                                            angle = self.ang_bias))
+                                            angle = rad2deg(self.ang_bias)))
 
 
     def obj_det(self):
@@ -148,7 +153,7 @@ class lidar_node():
         """ 返回一张可视化图片 """
         xc, yc = self.center
         img_show = np.dstack((self.lidar_img, self.lidar_img, self.lidar_img)) # 转三通道
-        img_roi = self.lidar_img[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]  # 绘图区域
+        img_roi = img_show[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]  # 绘图区域
         cv2.rectangle(img_show, (xc-self.roi[0], yc-self.roi[1]),
                                 (xc+self.roi[0], yc+self.roi[2]), (0, 255, 0), 2)
 
@@ -156,8 +161,8 @@ class lidar_node():
         self.drawline(img_roi, self.line2, (255,0,0))
         self.drawline(img_roi, self.line_mid, (255,255,255))
         font = cv2.FONT_HERSHEY_SIMPLEX
-        center_text = "pos_bias:%.2fcm | ang_bias:%.2f " % (self.pos_bias, self.ang_bias)
-        cv2.putText(img_show, center_text, (50, 50), font, 1, (20, 20, 255), 2)
+        center_text = "pos_bias:%.2fcm | ang_bias:%.2f " % (self.pos_bias, rad2deg(self.ang_bias))
+        cv2.putText(img_show, center_text, (50, 50), font, 0.5, (20, 20, 255), 2)
         return img_show
 
 
@@ -166,5 +171,5 @@ if __name__ == '__main__':
     Lidar = lidar_node()
     while not rospy.is_shutdown():
         img = Lidar.visulize()
-        cv2.show('lidar', img)
+        cv2.imshow('lidar', img)
         cv2.waitKey(5)
