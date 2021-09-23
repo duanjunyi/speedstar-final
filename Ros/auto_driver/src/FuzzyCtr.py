@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 import numpy as np
 
 class FuzzyCtr():
@@ -16,8 +19,8 @@ class FuzzyCtr():
     def control(self, x, y):
         """ 计算控制变量 """
         # 限制幅值
-        x = self.clump(x, self.x_range[0], self.x_range[-1])
-        y = self.clump(y, self.y_range[0], self.y_range[-1])
+        x = self.clump(x, self.x_range[0], self.x_range[-2])
+        y = self.clump(y, self.y_range[0], self.y_range[-2])
         # 查找输入在rules矩阵里的坐标
         xi = self.search_idx(x, self.x_range)
         yi = self.search_idx(y, self.y_range)

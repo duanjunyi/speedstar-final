@@ -41,7 +41,7 @@ def process(img):
         print('线数<2')
         return img_show
 
-    # 分成左右两侧
+    # 按照rho分成左右两侧
     lines_dist = np.abs(lines[:,0])
     sort_idx = np.argsort(lines_dist) # 按照 dist 排序
     lines = lines[sort_idx]
@@ -105,13 +105,21 @@ def drawline(img, line, color, linewidth=2):
 
 def meanline(lines):
     """ 对线做平均 """
-    sign = 1 if lines[0, 1] < np.pi/2 else -1
-    idx = (np.abs(lines[:, 1] - lines[0, 1]) > 2).nonzero()[0]
-    lines[idx, 1] -= sign*np.pi
-    lines[:, 0] = np.abs(lines[:, 0])
-    mline = np.mean(lines, axis=0, keepdims=False)
-    sign = 1 if lines[0, 1] < np.pi/2 else -1
-    mline[0] = sign * mline[0]
+    # 判断线是否是接近竖直，如果不是，可以直接平均
+    if np.all(np.logical_or(lines[:, 1] > np.pi*4/5, lines[:, 1] < np.pi/5)):
+        # 接近竖直的线，全转化为头朝上
+        idx = (lines[:, 1] > np.pi/2).nonzero()[0]
+        lines[idx, 1] -= np.pi
+        lines[idx, 0] = -lines[idx, 0]
+        # 进行平均
+        mline = np.mean(lines, axis=0, keepdims=False)
+        # 平均完后，可能会出现 <0 的情况
+        if mline[1] < 0:
+            mline[1] += np.pi
+            mline[0] = -mline[0]
+    else:
+        mline = np.mean(lines, axis=0, keepdims=False)
+
     return mline
 
 

@@ -70,7 +70,7 @@ def process(img):
 
     drawline(img_show_roi, line1, (0,0,255))
     drawline(img_show_roi, line2, (255,0,0))
-    #print(lines)
+    print(lines)
     #for line in lines:
     #    drawline(img_show_roi, line, (0,0,255))
     #for line in lines[mid_idx:]:
@@ -91,18 +91,16 @@ def process(img):
         k = -np.cos(theta) / np.sin(theta)
         rho = -distance((0,0), a=k, b=-1,c=80-80*k)
 
-
-
-
-    # 如果小车在两车道线中间，计算位置偏差pos_bias，角度偏差ang_bias,<0表示偏左
+    # 取 line1 和 line2 锐夹角的角平分线
     if np.abs(line1[0]) < np.abs(rho) and np.abs(line2[0]) > np.abs(rho):
-        pos_bias = np.abs(rho) - np.abs(line1[0] + line2[0]) / 2
-        ang_bias = (line1[1] + line2[1]) / 2 / np.pi * 180
-        ang_bias = ang_bias if ang_bias < 90 else ang_bias - 180
-        flag = 1
-        bias = pos_bias
-        angle = - ang_bias
-        # print('偏差 pos_bias=%5.2f, ang_bias=%5.2f' % (pos_bias, ang_bias))
+        line_mid = meanline(np.vstack([line1, line2]))
+        pos_bias = np.abs(rho) - np.abs(line_mid[0])
+        # 将line_mid头朝上
+        if line_mid[1]>np.pi/2:
+            line_mid[1] -= np.pi
+            line_mid[0] = -line_mid[0]
+        ang_bias = -line_mid[1]
+        print('偏差 pos_bias=%5.2f, ang_bias=%5.2f' % (pos_bias, ang_bias))
     return img_show
 
 def distance(pt, a, b, c):
@@ -124,13 +122,21 @@ def drawline(img, line, color, linewidth=2):
 
 def meanline(lines):
     """ 对线做平均 """
-    sign = 1 if lines[0, 1] < np.pi/2 else -1
-    idx = (np.abs(lines[:, 1] - lines[0, 1]) > 2).nonzero()[0]
-    lines[idx, 1] -= sign*np.pi
-    lines[:, 0] = np.abs(lines[:, 0])
-    mline = np.mean(lines, axis=0, keepdims=False)
-    sign = 1 if lines[0, 1] < np.pi/2 else -1
-    mline[0] = sign * mline[0]
+    # 判断线是否是接近竖直，如果不是，可以直接平均
+    if np.all(np.logical_or(lines[:, 1] > np.pi*4/5, lines[:, 1] < np.pi/5)):
+        # 接近竖直的线，全转化为头朝上
+        idx = (lines[:, 1] > np.pi/2).nonzero()[0]
+        lines[idx, 1] -= np.pi
+        lines[idx, 0] = -lines[idx, 0]
+        # 进行平均
+        mline = np.mean(lines, axis=0, keepdims=False)
+        # 平均完后，可能会出现 <0 的情况
+        if mline[1] < 0:
+            mline[1] += np.pi
+            mline[0] = -mline[0]
+    else:
+        mline = np.mean(lines, axis=0, keepdims=False)
+
     return mline
 
 
