@@ -15,6 +15,7 @@ def loop_idx(size):
         yield idx
         idx = 0 if idx>=size-1 else idx+1
 
+
 class DriverEvent(object):
     """ 事件基类 """
     def __init__(self, driver):
@@ -31,7 +32,13 @@ class DriverEvent(object):
 
 
 class FollowLaneEvent(DriverEvent):
-    """ 循线事件 """
+    """
+    循线事件
+    is_start: 初始化即开启
+    is_end: 从不结束
+    strategy: 模糊控制方向，延时
+    process: None ---> direction=direction ---> None
+    """
     def __init__(self, driver, timedelay):
         super(FollowLaneEvent, self).__init__(driver)
         self.timedelay = timedelay
@@ -43,7 +50,6 @@ class FollowLaneEvent(DriverEvent):
         self.timer = threading.Thread(target = self.set_direct)
         self.timer.setDaemon(True)
         self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
-
 
     def is_start(self):
         """ 事件是否开始 """
@@ -83,16 +89,70 @@ class FollowLaneEvent(DriverEvent):
             time.sleep(0.1)
 
 
-
 class FollowLidarEvent(DriverEvent):
     '''
+    雷达导航
     is_start: 雷达检测到挡板
     is_end: 雷达没有检测到挡板
-    strategy:
+    strategy: 分档位，根据距离和角度偏差的不同设定方向
+    process: None ---> direction=direction ---> None
     '''
     def __init__(self, driver):
         super(FollowLidarEvent, self).__init__(driver)
 
+    def is_start(self):
+        return False
+
+    def is_end(self):
+        return True
+
+    def strategy(self):
+        return True
+
+
+class CrossBridgeEvent(DriverEvent):
+    '''
+    过桥事件
+    is_start: 满足以下条件：
+            (1)检测到挡板
+            (2)垂直方向存在一定的加速度
+    is_end: is_start不满足
+    strategy: 上桥加速，下桥减速
+    process: None ---> speed=speed ---> None
+    '''
+    def __init__(self, driver, imu_limit):
+        super(CrossBridgeEvent, self).__init__(driver)
+        self.imu_limit = imu_limit
+
+    def is_start(self):
+        return False
+
+    def is_end(self):
+        return True
+
+    def strategy(self):
+        return True
+
+
+class ObstacleEvent(DriverEvent):
+    '''
+    障碍物事件
+    is_start: 检测到障碍物
+    is_end: 没有检测到障碍物
+    strategy: 停下
+    process: None ---> speed=0 ---> None
+    '''
+    def __init__(self, driver):
+        super(ObstacleEvent, self).__init__(driver)
+
+    def is_start(self):
+        return False
+
+    def is_end(self):
+        return True
+
+    def strategy(self):
+        return True
 
 
 class RedStopEvent(DriverEvent):
@@ -100,11 +160,12 @@ class RedStopEvent(DriverEvent):
     红灯策略
     is_start: 目标检测到红灯，四个条件需要同时满足：
              (1)box面积大于0.1w*0.1h
-             (2)斑马线label的score>0.9
-             (3)斑马线位于图片的下方，即y_max<0.2h
+             (2)红灯label的score>0.9
+             (3)红灯位于图片的上方，即y_max<0.2h
              (4)连续1个输出满足上述要求
     is_end: is_start条件任意一个不满足则is_end，档位调为D
     strategy: 直接刹车速度为0,速度小于2时档位调为P
+    process: None ---> speed=0&mode='P' ---> mode='D'
     '''
     def __init__(self, driver, scale_prop, y_limit, score_limit=0.5):
         """
@@ -149,12 +210,13 @@ class GreenGoEvent(DriverEvent):
     红灯策略
     is_start: 目标检测到绿灯，四个条件需要同时满足：
              (1)box面积大于0.1w*0.1h
-             (2)斑马线label的score>0.9
-             (3)斑马线位于图片的下方，即y_max<0.2h
+             (2)绿灯label的score>0.9
+             (3)绿灯位于图片的上方，即y_max<0.2h
              (4)连续1个输出满足上述要求
              档位调为D
     is_end: is_start条件任意一个不满足则is_end
     strategy: 直接刹车速度为0
+    process: mode='D' ---> speed=speed ---> None
     """
     def __init__(self, driver, scale_prop, y_limit, speed, score_limit=0.5):
         """
@@ -203,12 +265,14 @@ class PedestrianEvent(DriverEvent):
              (4)连续1个输出满足上述要求
     is_end: is_start条件任意一个不满足则is_end
     strategy: 直接刹车速度为0
+    process: None ---> speed=0&mode='P' ---> mode='D',speed=speed
     '''
-    def __init__(self, driver, scale_prop, y_limit, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed_normal, score_limit=0.5):
         super(PedestrianEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
+        self.speed_normal = speed_normal
 
     def is_start(self):
         width = 1280
@@ -220,8 +284,9 @@ class PedestrianEvent(DriverEvent):
         return False
 
     def is_end(self):
-        if not self.is_start():
+        if self.driver.get_speed() == 0:
             self.driver.set_mode('D')
+            self.driver.set_speed(self.speed_normal)
             return True
         return False
 
@@ -245,13 +310,15 @@ class SpeedLimitedEvent(DriverEvent):
             (3)解除限速标识位于图片的上方，即y_max<0.7h
             (4)连续1个输出满足上述要求
     strategy: 速度<=1km/h
+    process: None ---> speed=speed_low --->speed=speed_normal
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed_low, speed_normal, score_limit=0.5):
         super(SpeedLimitedEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
-        self.set_speed = speed
+        self.speed_low = speed_low
+        self.speed_normal = speed_normal
 
     def is_start(self):
         width = 1280
@@ -268,11 +335,12 @@ class SpeedLimitedEvent(DriverEvent):
         flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(5)
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
         if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+            self.driver.set_speed(self.speed_normal)
             return True
         return False
 
     def strategy(self):
-        self.driver.set_speed(self.set_speed)
+        self.driver.set_speed(self.speed_low)
 
 
 class SpeedMinimumEvent(DriverEvent):
@@ -283,16 +351,17 @@ class SpeedMinimumEvent(DriverEvent):
             (2)限速标志label的score>0.9
             (3)限速标识位于图片的上方，即y_max<0.7h
             (4)连续1个输出满足上述要求
-            (5)速度小于4kmk/h
     is_end: is_start任意条件不满足
-    strategy: 速度设置为4km/h
+    strategy: 速度设置为30
+    process: None ---> speed=speed_high --->speed=speed_normal
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed, score_limit):
+    def __init__(self, driver, scale_prop, y_limit, speed_high, speed_normal, score_limit):
         super(SpeedMinimumEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
-        self.set_speed = speed
+        self.speed_high = speed_high
+        self.speed_normal = speed_normal
 
     def is_start(self):
         width = 1280
@@ -304,15 +373,27 @@ class SpeedMinimumEvent(DriverEvent):
         return False
 
     def is_end(self):
-        return not self.is_start()
+        if not self.is_start():
+            self.driver.set_speed(self.speed_normal)
+            return True
+        return False
 
     def strategy(self):
-        self.driver.set_speed(self.set_speed)
+        self.driver.set_speed(self.speed_high)
 
 
 class YellowBackEvent(DriverEvent):
     '''
-    is_start:
+    倒车策略
+    is_start: 目标检测到黄灯，四个条件需要同时满足：
+             (1)box面积大于0.1w*0.1h
+             (2)黄灯label的score>0.9
+             (3)黄灯位于图片的上方，即y_max<0.2h
+             (4)连续1个输出满足上述要求
+             档位调为R
+    is_end: 超声波或者雷达返回靠边信息
+    strategy: 倒车，先转弯后倒车
+    process: mode='R' ---> direction=direction&speed=speed ---> speed=0
     '''
     def __init__(self, driver, scale_prop, y_limit, speed, score_limit, range_limit):
         super(YellowBackEvent,self).__init__(driver)
