@@ -111,7 +111,7 @@ class Driver(object):
 
     def hilens_callback(self, data):
         tmp = self.hi_loop_idx.next()
-        self.sensor_cache[tmp] = data
+        self.hilens_cache[tmp] = data
         self.hi_idx = tmp
 
     def lane_callback(self, data):
