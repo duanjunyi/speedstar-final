@@ -34,7 +34,7 @@ class lidar_node():
         self.ang_bias = 0   # 角度偏差，>0表示小车偏右
         self.center = (260, 260)
 
-        self.roi = (80, 100, 20)  # halfwidth, forward, backward
+        self.roi = (80, 140, 20)  # halfwidth, forward, backward
         self.extra_roi_width = 100
         self.halfwidth, self.forward, self.backward = self.roi
         # 障碍物检测参数
