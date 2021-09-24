@@ -66,7 +66,7 @@ class FollowLaneEvent(DriverEvent):
         """ 控制策略 """
         bias, slope = self.driver.get_lane()
         bias = -bias
-        self.direction = self.controller.control(bias, slope)
+        self.direction = int( self.controller.control(bias, slope) + 50 )
         # 限位
         # bias_sign = 1 if bias>=0 else -1
         # slope_sign = 1 if slope>=0 else -1
