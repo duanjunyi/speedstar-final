@@ -109,6 +109,8 @@ class lidar_node():
         img_roi_pre = self.lidar_img[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]
         img_mask[:, self.extra_roi_width-1:width - self.extra_roi_width-1] = img_roi_pre
         img_roi = img_mask
+        cv2.imshow('img_roi', img_roi)
+        cv2.waitKey(5)
         # 霍夫变换检测直线
         lines = cv2.HoughLines(img_roi, 4.5, np.pi/180, 70, 40)
         if lines is None or len(lines)<2:
@@ -195,10 +197,11 @@ class lidar_node():
         """ 返回一张可视化图片 """
         xc, yc = self.center
         img_show = np.dstack((self.lidar_img, self.lidar_img, self.lidar_img)) # 转三通道
-        img_roi = img_show[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]  # 绘图区域
+        img_roi = img_show[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]-self.extra_roi_width:xc+self.roi[0]+self.extra_roi_width]  # 绘图区域
         cv2.rectangle(img_show, (xc-self.roi[0], yc-self.roi[1]),
                                 (xc+self.roi[0], yc+self.roi[2]), (0, 255, 0), 2)
-
+        cv2.rectangle(img_show, (xc - self.roi[0] - self.extra_roi_width, yc - self.roi[1]),
+                      (xc + self.roi[0] + self.extra_roi_width, yc + self.roi[2]), (255, 255, 0), 2)
         self.drawline(img_roi, self.line1, (0,0,255))
         self.drawline(img_roi, self.line2, (255,0,0))
         self.drawline(img_roi, self.line_mid, (255,255,255))
