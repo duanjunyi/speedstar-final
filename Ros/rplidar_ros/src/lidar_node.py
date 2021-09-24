@@ -218,5 +218,5 @@ if __name__ == '__main__':
     Lidar = lidar_node()
     while not rospy.is_shutdown():
         img = Lidar.visulize()
-        #cv2.imshow('lidar', img)
-        #cv2.waitKey(5)
+        cv2.imshow('lidar', img)
+        cv2.waitKey(5)
