@@ -62,7 +62,7 @@ class lidar_node():
         img[px, py] = 255
         self.lidar_img = img
         self.board_det() # 更新 board_exist, pos_bias, ang_bias
-        self.obj_det() # 更新障碍物obj_exist
+        self.obj_det(scan) # 更新障碍物obj_exist
         self.lidar_pub.publish(BoardMsg(    is_obstacle = self.obs_exist,
                                             is_board = self.board_exist,
                                             pos_bias = self.pos_bias,
