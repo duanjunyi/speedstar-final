@@ -33,8 +33,17 @@ class lidar_node():
         self.pos_bias = 0   # 位置偏差，>0表示小车偏右
         self.ang_bias = 0   # 角度偏差，>0表示小车偏右
         self.center = (260, 260)
-        self.roi = (80, 80, 20)  # halfwidth, forward, backward
+        self.roi = (80, 100, 20)  # halfwidth, forward, backward
+        self.extra_roi_width = 100
         self.halfwidth, self.forward, self.backward = self.roi
+        # 障碍物检测参数
+        self.obs_distance = 0.8
+        self.obs_range = (160, 200)
+        self.obs_threshold = 10
+        self.obs_check_width = 20
+        self.obs_check_range = (self.obs_range[0] - self.obs_check_width, self.obs_range[1] + self.obs_check_width)
+        self.obs_exist = 0
+
         self.board_exist = 0
         self.ros_spin = threading.Thread(target = rospy.spin)
         self.ros_spin.setDaemon(True)
@@ -54,19 +63,52 @@ class lidar_node():
         self.lidar_img = img
         self.board_det() # 更新 board_exist, pos_bias, ang_bias
         self.obj_det() # 更新障碍物obj_exist
-        self.lidar_pub.publish(BoardMsg(    flag = self.board_exist,
-                                            bias = self.pos_bias,
-                                            angle = rad2deg(self.ang_bias)))
+        self.lidar_pub.publish(BoardMsg(    is_obstacle = self.obs_exist,
+                                            is_board = self.board_exist,
+                                            pos_bias = self.pos_bias,
+                                            angle_bias = rad2deg(self.ang_bias)))
 
 
-    def obj_det(self):
-        pass
+    def obj_det(self, scan):
+        angle_increment_ = scan.angle_increment * 180 / np.pi
+
+        ranges = np.array(scan.ranges)  # [1440,]
+        ranges_obs = ranges
+        ranges_obs[ranges_obs > 2.5] = 0
+
+        angle_1 = self.obs_range[0]
+        angle_2 = self.obs_range[1]
+        angle_1_num = int(angle_1 / angle_increment_)
+        angle_2_num = int(angle_2 / angle_increment_)
+        # angle_1to2 = np.arange(angle_1_num, angle_2_num) * scan.angle_increment
+        ranges_1to2 = ranges_obs[angle_1_num:angle_2_num]
+        check_ranges = ranges_obs[
+                       int(self.obs_check_range[0] / angle_increment_):int(self.obs_check_range[1] / angle_increment_)]
+        # print(angle_increment_)
+        # print(angle_1to2)
+        # px = (np.cos(angle_1to2) * ranges_1to2 * 100).astype(np.int32) + 260
+        # py = (np.sin(angle_1to2) * ranges_1to2 * 100).astype(np.int32) + 260
+        # img2 = np.zeros(imSize, dtype=np.uint8)
+        # img2[px, py] = 255
+
+        ranges_1to2[ranges_1to2 > self.obs_distance] = 0
+        # 设置障碍物检测范围检查机制
+        check_ranges[check_ranges > self.obs_distance] = 0
+        y = np.nonzero(ranges_1to2)
+        if len(y[0]) > self.obs_threshold:
+            self.obs_exist = 1
+        else:
+            self.obs_exist = 0
 
     def board_det(self):
+        width = 2*(self.halfwidth + self.extra_roi_width)
+        height = self.forward + self.backward
+        img_mask = np.zeros((width, height), dtype=np.uint8)
         # 剪裁
         xc, yc = self.center
-        img_roi = self.lidar_img[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]
-
+        img_roi_pre = self.lidar_img[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]
+        img_mask[:, self.extra_roi_width-1:width - self.extra_roi_width-1] = img_roi_pre
+        img_roi = img_mask
         # 霍夫变换检测直线
         lines = cv2.HoughLines(img_roi, 4.5, np.pi/180, 70, 40)
         if lines is None or len(lines)<2:

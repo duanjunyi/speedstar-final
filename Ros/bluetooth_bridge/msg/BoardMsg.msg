@@ -1,4 +1,4 @@
 bool is_obstacle
-bool flag
-float32 bias
-float32 angle
+bool is_board
+float32 pos_bias
+float32 angle_bias
