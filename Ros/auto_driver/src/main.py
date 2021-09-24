@@ -13,20 +13,21 @@ def sigint_handler(signal, frame):
 signal.signal(signal.SIGINT, sigint_handler)
 
 
+
 def main():
     #--- 小车驱动
     driver = Driver()
     #--- 定义事件列表
     follow_lane_event = FollowLaneEvent(driver, 1)
-    red_stop_event = RedStopEvent(driver, 0.01, 0.2, 0.9)
-    green_go_event = GreenGoEvent(driver, 0.01, 0.2, 20, 0.9)
+    red_stop_event = RedStopEvent(driver, 0.2, 0.5, 0.8)
+    green_go_event = GreenGoEvent(driver, 0.2, 0.5, 40, 0.8)
     pedestrian_event = PedestrianEvent(driver, 0.06, 0.6, 0.9)
-    speed_limited_event = SpeedLimitedEvent(driver, 0.02, 0.7, 10, 20, 0.9)
-    speed_minimum_event = SpeedMinimumEvent(driver, 0.02, 0.7, 30, 20, 0.9)
-    obstacle_event = ObstacleEvent(driver, 20)
-    cross_bridge_event = CrossBridgeEvent(driver, 300, 30, 20, 30)
+    speed_limited_event = SpeedLimitedEvent(driver, 0.2, 0.5, 20, 40, 0.8)
+    speed_minimum_event = SpeedMinimumEvent(driver, 0.2, 0.5, 40, 60, 0.8)
+    obstacle_event = ObstacleEvent(driver, 40)
+    cross_bridge_event = CrossBridgeEvent(driver, 300, 60, 40, 50)
     follow_lidar_event = FollowLidarEvent(driver)
-    yellow_back_event = YellowBackEvent(driver, 0.01, 0.2, 10, 0.9, 250, 1, 65)
+    yellow_back_event = YellowBackEvent(driver, 0.2, 0.5, 10, 0.8, 250, 2, 65)
 
     event_list = [obstacle_event, red_stop_event, pedestrian_event, yellow_back_event, cross_bridge_event,
                   follow_lidar_event, green_go_event, follow_lane_event, speed_limited_event, speed_minimum_event]  # 默认为优先级排序，越靠前优先级越高
