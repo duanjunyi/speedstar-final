@@ -39,7 +39,7 @@ class lidar_node():
         self.halfwidth, self.forward, self.backward = self.roi
         # 障碍物检测参数
         self.obs_distance = 0.8
-        self.obs_range = (160, 200)
+        self.obs_range = (150, 210)
         self.obs_threshold = 10
         self.obs_check_width = 20
         self.obs_check_range = (self.obs_range[0] - self.obs_check_width, self.obs_range[1] + self.obs_check_width)
@@ -63,11 +63,74 @@ class lidar_node():
         img[px, py] = 255
         self.lidar_img = img
         self.board_det() # 更新 board_exist, pos_bias, ang_bias
-        self.obj_det(scan) # 更新障碍物obj_exist
+        #self.obj_det(scan) # 更新障碍物obj_exist
+        self.obs_det(scan) # 第二版的障碍物检测，更新self.obj_exist
         self.lidar_pub.publish(BoardMsg(    is_obstacle = self.obs_exist,
                                             is_board = self.board_exist,
                                             pos_bias = self.pos_bias,
                                             angle_bias = rad2deg(self.ang_bias)))
+
+    def obj_det_new(self, scan, angle_range, distance, threshold):
+        angle_increment_ = scan.angle_increment * 180 / np.pi
+        ranges = np.array(scan.ranges)  # 取出激光雷达所有点的距离值 [1440,]
+        ranges[ranges > 1.5] = 0 # 大于1.5m的都置零
+        angle_1 = angle_range[0]
+        angle_2 = angle_range[1]
+        angle_1_num = int(angle_1 / angle_increment_)
+        angle_2_num = int(angle_2 / angle_increment_)
+        ranges_1to2 = ranges[angle_1_num:angle_2_num] # 取出感兴趣的区域的点
+
+        ranges_1to2[ranges_1to2 > distance] = 0 # 将设定距离外的点置零
+        y = np.nonzero(ranges_1to2) # 计算出距离内的点的数量
+        if len(y[0]) > threshold: # 根据设定的阈值判断此区间内是否有物体
+            obj_exist = 1
+        else:
+            obj_exist = 0
+        return obj_exist
+
+    def obs_det(self, scan):
+        obs_exist_probably = self.obj_det_new(scan, self.obs_range, self.obs_distance, self.obs_threshold)
+        width = 60
+        obs_range_check = (180-width,180+width)
+        num_window = 2*width/10
+        obj_exist = np.num(num_window)
+        flag_1 = 0
+        index = 0
+        flag_2 = 0
+        flag_3 = 0
+
+        if obs_exist_probably:
+            for i in range(num_window):
+                obj_exist[i] = self.obj_det_new(scan, (180-width+10*i,180-width+10*(i+1)), self.obs_distancce, 10)
+            for i in range(num_window):
+                if obj_exist[i] == 1:
+                    flag_1 = 1
+                    index = i
+                    break
+            for i in range(index+1,num_window):
+                if obj_exist[i] == 0:
+                    flag_2 = 1
+                    index = i
+                    break
+            for i in range(index+1,num_window):
+                if obj_exist[i] == 1:
+                    if flag_1 ==1 and flag_2 ==1:
+                        flag_3 = 1
+                        break
+            if flag_3 == 1:
+                obs_exist_probably = 0
+        self.obs_exist = obs_exist_probably
+
+
+
+
+
+
+
+
+
+
+
 
 
     def obj_det(self, scan):
