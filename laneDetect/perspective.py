@@ -13,7 +13,7 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 # 图片路径
 # img_path = BASE_DIR / 'chessboard1.png'
-img_path = BASE_DIR / 'video/test3.mp4'
+img_path = BASE_DIR / 'video/test4.mp4'
 
 def imread(img_path):
     """ 读入图片或视频第一帧 """
@@ -33,8 +33,10 @@ img_src = img.copy()
 img_dst = np.zeros_like(img)
 
 pts_cnt = [0, 0]# 标记源点数, 目标点数
-src_points = np.array([[498., 596.], [789., 596.], [250., 720.], [1050., 720.]], dtype="float32")   # 源点
-dst_points = np.array([[300., 100.], [980., 100.], [300., 720.], [980., 720.]], dtype="float32")    # 目标点
+src_points = np.array([[236, 545], [510, 399], [812, 387], [1162, 544]], dtype="float32")
+dst_points = np.array([[344, 706], [376, 441], [915, 430], [913, 708]], dtype="float32")
+# src_points = np.array([[274, 552], [533, 410], [911, 400], [1220, 561]], dtype="float32")
+# dst_points = np.array([[456, 702], [499, 499], [775, 490], [767, 706]], dtype="float32")
 MWarp = cv2.getPerspectiveTransform(src_points, dst_points)  # 透视变换矩阵计算
 
 

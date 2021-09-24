@@ -10,13 +10,13 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 import cv2
 
-img = cv2.imread(str(BASE_DIR/'video/real.jpg'), cv2.IMREAD_COLOR)
+img = cv2.imread(str(BASE_DIR/'video/hsv.jpg'), cv2.IMREAD_COLOR)
 img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  # 将BGR图像转换为HSV格式
 
 
 idx = 0
 hsv_name  = ['hl', 'sl', 'vl', 'hh', 'sh', 'vh']
-hsv_range = [24, 85, 73, 74, 255, 255]
+hsv_range = [ 19, 125, 145, 77, 254, 255]
 while True:
     lower_color = np.array(hsv_range[:3])  # 分别对应着HSV中的最小值
     upper_color = np.array(hsv_range[3:])  # 分别对应着HSV中的最大值
