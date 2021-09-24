@@ -24,8 +24,11 @@ def main():
     pedestrian_event = PedestrianEvent(driver, 0.06, 0.6, 0.9)
     speed_limited_event = SpeedLimitedEvent(driver, 0.02, 0.7, 10, 20, 0.9)
     speed_minimum_event = SpeedMinimumEvent(driver, 0.02, 0.7, 30, 20, 0.9)
-    event_list = [red_stop_event, pedestrian_event, green_go_event, follow_lane_event, speed_limited_event,
-                  speed_minimum_event]  # 默认为优先级排序，越靠前优先级越高
+    obstacle_event = ObstacleEvent(driver, 20)
+    cross_bridge_event = CrossBridgeEvent(driver, 300, 30, 20, 30)
+    follow_lidar_event = FollowLidarEvent(driver)
+    event_list = [red_stop_event, pedestrian_event, obstacle_event, cross_bridge_event, follow_lidar_event,
+                  green_go_event, follow_lane_event, speed_limited_event, speed_minimum_event]  # 默认为优先级排序，越靠前优先级越高
 
     #--- 主循环
     rate = rospy.Rate(100)  # 循环频率
@@ -48,9 +51,9 @@ def main():
             if event_list[i].is_end():
                 event_running.remove(i)
             else:
-                if i in [1, 2]:
+                if i in [1, 2, 3, 4, 5]:
                     event_list[i].strategy()
-                    break  # 红灯，斑马线阻塞运行
+                    break  # 红灯，斑马线，障碍物，上桥，雷达阻塞运行
                 event_list[i].strategy()
 
         rate.sleep()

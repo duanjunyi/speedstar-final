@@ -101,12 +101,24 @@ class FollowLidarEvent(DriverEvent):
         super(FollowLidarEvent, self).__init__(driver)
 
     def is_start(self):
+        _, board, _, _ = self.driver.get_lidar()
+        if board:
+            return True
         return False
 
     def is_end(self):
-        return True
+        if not self.is_start():
+            return True
+        return False
 
     def strategy(self):
+        # bias为正靠右，angle为正朝右
+        _, _, bias, angle = self.driver.get_lidar()
+        norm = bias / 15 + angle / 25  # 归一化
+        sign_norm = 1 if norm > 0 else -1
+        if abs(norm) >= 1:
+            norm = sign_norm
+        self.driver.set_direction(50 - norm * 50)
         return True
 
 
@@ -115,22 +127,49 @@ class CrossBridgeEvent(DriverEvent):
     过桥事件
     is_start: 满足以下条件：
             (1)检测到挡板
-            (2)垂直方向存在一定的加速度
-    is_end: is_start不满足
+            (2)俯仰角大于一定正向角度
+    is_end: 满足以下条件：
+            (1)没有检测到挡板
+            (2)俯仰角大于一定负向角度
     strategy: 上桥加速，下桥减速
     process: None ---> speed=speed ---> None
     '''
-    def __init__(self, driver, imu_limit):
+    def __init__(self, driver, imu_limit, speed_upper, speed_normal, speed_limit):
         super(CrossBridgeEvent, self).__init__(driver)
         self.imu_limit = imu_limit
+        self.speed_upper = speed_upper
+        self.speed_normal = speed_normal
+        self.speed_limit = speed_limit
 
     def is_start(self):
+        _, board, _, _ = self.driver.get_lidar()
+        imu, _, _ = self.driver.get_theta()
+        if board and imu > self.imu_limit:
+            return True
         return False
 
     def is_end(self):
-        return True
+        _, board, _, _ = self.driver.get_lidar()
+        imu, _, _ = self.driver.get_theta()
+        if not board and imu > -self.imu_limit:
+            return True
+        return False
 
     def strategy(self):
+        _, _, bias, angle = self.driver.get_lidar()
+        norm = bias / 15 + angle / 25  # 归一化
+        imu, _, _ = self.driver.get_theta()
+        sign_norm = 1 if norm > 0 else -1
+        if abs(norm) >= 1:
+            norm = sign_norm
+        self.driver.set_direction(50 - norm * 50)
+        if imu > self.imu_limit:
+            self.driver.set_speed(self.speed_upper)
+        elif self.driver.get_speed() < self.speed_limit:
+            self.driver.set_mode('D')
+            self.driver.set_speed(self.speed_normal)
+        else:
+            self.driver.set_mode('N')
         return True
 
 
@@ -140,18 +179,29 @@ class ObstacleEvent(DriverEvent):
     is_start: 检测到障碍物
     is_end: 没有检测到障碍物
     strategy: 停下
-    process: None ---> speed=0 ---> None
+    process: None ---> speed=0&mode='N' ---> mode='D'&speed=speed
     '''
-    def __init__(self, driver):
+    def __init__(self, driver, speed_normal):
         super(ObstacleEvent, self).__init__(driver)
+        self.speed_normal = speed_normal
 
     def is_start(self):
+        obstacle, _, _, _ = self.driver.get_lidar()
+        if obstacle:
+            return True
         return False
 
     def is_end(self):
-        return True
+        if not self.is_start():
+            self.driver.set_mode('D')
+            self.driver.set_speed(self.speed_normal)
+            return True
+        return False
 
     def strategy(self):
+        self.driver.set_speed(0)
+        if self.driver.get_speed() <= 2:
+            self.driver.set_mode('N')
         return True
 
 
@@ -165,7 +215,7 @@ class RedStopEvent(DriverEvent):
              (4)连续1个输出满足上述要求
     is_end: is_start条件任意一个不满足则is_end，档位调为D
     strategy: 直接刹车速度为0,速度小于2时档位调为P
-    process: None ---> speed=0&mode='P' ---> mode='D'
+    process: None ---> speed=0&mode='N' ---> mode='D'
     '''
     def __init__(self, driver, scale_prop, y_limit, score_limit=0.5):
         """
@@ -202,7 +252,7 @@ class RedStopEvent(DriverEvent):
         """ 控制策略 """
         self.driver.set_speed(0)
         if self.driver.get_speed() <= 2:
-            self.driver.set_mode('P')
+            self.driver.set_mode('N')
 
 
 class GreenGoEvent(DriverEvent):
@@ -265,7 +315,7 @@ class PedestrianEvent(DriverEvent):
              (4)连续1个输出满足上述要求
     is_end: is_start条件任意一个不满足则is_end
     strategy: 直接刹车速度为0
-    process: None ---> speed=0&mode='P' ---> mode='D',speed=speed
+    process: None ---> speed=0&mode='N' ---> mode='D',speed=speed
     '''
     def __init__(self, driver, scale_prop, y_limit, speed_normal, score_limit=0.5):
         super(PedestrianEvent, self).__init__(driver)
@@ -293,7 +343,7 @@ class PedestrianEvent(DriverEvent):
     def strategy(self):
         self.driver.set_speed(0)
         if self.driver.get_speed() <= 2:
-            self.driver.set_mode('P')
+            self.driver.set_mode('N')
 
 
 class SpeedLimitedEvent(DriverEvent):

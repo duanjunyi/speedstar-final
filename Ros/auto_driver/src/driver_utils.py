@@ -6,7 +6,7 @@ import rospy
 import numpy as np
 import math
 from std_msgs.msg import Int32, Float32
-from bluetooth_bridge.msg import Sensors, HilensMsg, LaneMsg
+from bluetooth_bridge.msg import Sensors, HilensMsg, LaneMsg, BoardMsg
 import threading
 
 def loop_idx(size):
@@ -48,17 +48,21 @@ class Driver(object):
         self.sensor_sub    = rospy.Subscriber('/vcu', Sensors, self.sensors_callback)
         self.hilens_sub    = rospy.Subscriber('/hilens', HilensMsg, self.hilens_callback)
         self.lane_sub      = rospy.Subscriber('/lane_detect', LaneMsg, self.lane_callback)
+        self.lidar_sub     = rospy.Subscriber('/lidar', BoardMsg, self.lidar_callback)
 
         self.cache_size = cache_size
         self.sensor_cache = [Sensors(), ] * self.cache_size
         self.hilens_cache = [HilensMsg(), ] * self.cache_size
         self.lane_cache = [LaneMsg(), ] * self.cache_size
+        self.lidar_cache = [BoardMsg(), ]* self.cache_size
         self.loop_idx = loop_idx(self.cache_size)
         self.hi_loop_idx = loop_idx(self.cache_size)
         self.lane_loop_idx = loop_idx(self.cache_size)
+        self.lidar_loop_idx = loop_idx(self.cache_size)
         self.idx = 0
         self.hi_idx = 0
         self.lane_idx = 0
+        self.lidar_idx = 0
         self.ros_spin = threading.Thread(target = rospy.spin)
         self.ros_spin.setDaemon(True)
         self.ros_spin.start()
@@ -115,6 +119,11 @@ class Driver(object):
         self.lane_cache[tmp] = data
         self.lane_idx = tmp
 
+    def lidar_callback(self, data):
+        tmp = self.lidar_loop_idx.next()
+        self.lidar_cache[tmp] = data
+        self.lidar_idx = tmp
+
     #--- 获取小车状态
     def get_lane(self):
         return  self.lane_cache[self.lane_idx].bias, \
@@ -129,10 +138,16 @@ class Driver(object):
         score = self.hilens_cache[self.hi_idx].score[index]
         return flag, x_min, x_max, y_min, y_max, score
 
+    def get_lidar(self):
+        return self.lidar_cache[self.lidar_idx].obstacle, \
+               self.lidar_cache[self.lidar_idx].board, \
+               self.lidar_cache[self.lidar_idx].bias, \
+               self.lidar_cache[self.lidar_idx].angle
+
     def get_acc(self):
-        return  self.sensor_cache[self.idx].ax, \
-                self.sensor_cache[self.idx].ay, \
-                self.sensor_cache[self.idx].az
+        return self.sensor_cache[self.idx].ax, \
+               self.sensor_cache[self.idx].ay, \
+               self.sensor_cache[self.idx].az
 
     def get_alpha(self):
         return  self.sensor_cache[self.idx].alphax, \
