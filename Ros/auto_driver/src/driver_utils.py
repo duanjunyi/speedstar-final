@@ -139,10 +139,10 @@ class Driver(object):
         return flag, x_min, x_max, y_min, y_max, score
 
     def get_lidar(self):
-        return self.lidar_cache[self.lidar_idx].obstacle, \
-               self.lidar_cache[self.lidar_idx].board, \
-               self.lidar_cache[self.lidar_idx].bias, \
-               self.lidar_cache[self.lidar_idx].angle
+        return self.lidar_cache[self.lidar_idx].is_obstacle, \
+               self.lidar_cache[self.lidar_idx].is_board, \
+               self.lidar_cache[self.lidar_idx].pos_bias, \
+               self.lidar_cache[self.lidar_idx].angle_bias
 
     def get_acc(self):
         return self.sensor_cache[self.idx].ax, \
