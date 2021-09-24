@@ -19,9 +19,6 @@ def out_name():
     return str(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')) + '.mp4'
 
 
-
-
-
 if __name__ == '__main__':
     cap = CapInit()
 
