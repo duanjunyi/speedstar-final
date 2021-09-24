@@ -103,7 +103,7 @@ class lidar_node():
     def board_det(self):
         width = 2*(self.halfwidth + self.extra_roi_width)
         height = self.forward + self.backward
-        img_mask = np.zeros((width, height), dtype=np.uint8)
+        img_mask = np.zeros((height, width), dtype=np.uint8)
         # 剪裁
         xc, yc = self.center
         img_roi_pre = self.lidar_img[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]
