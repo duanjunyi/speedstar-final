@@ -16,7 +16,6 @@ signal.signal(signal.SIGINT, sigint_handler)
 def main():
     #--- 小车驱动
     driver = Driver()
-    driver.set_mode('D')
     #--- 定义事件列表
     follow_lane_event = FollowLaneEvent(driver, 1)
     red_stop_event = RedStopEvent(driver, 0.01, 0.2, 0.9)
@@ -27,8 +26,10 @@ def main():
     obstacle_event = ObstacleEvent(driver, 20)
     cross_bridge_event = CrossBridgeEvent(driver, 300, 30, 20, 30)
     follow_lidar_event = FollowLidarEvent(driver)
-    event_list = [red_stop_event, pedestrian_event, obstacle_event, cross_bridge_event, follow_lidar_event,
-                  green_go_event, follow_lane_event, speed_limited_event, speed_minimum_event]  # 默认为优先级排序，越靠前优先级越高
+    yellow_back_event = YellowBackEvent(driver, 0.01, 0.2, 10, 0.9, 250, 1, 65)
+
+    event_list = [obstacle_event, red_stop_event, pedestrian_event, yellow_back_event, cross_bridge_event,
+                  follow_lidar_event, green_go_event, follow_lane_event, speed_limited_event, speed_minimum_event]  # 默认为优先级排序，越靠前优先级越高
 
     #--- 主循环
     rate = rospy.Rate(100)  # 循环频率
@@ -51,7 +52,7 @@ def main():
             if event_list[i].is_end():
                 event_running.remove(i)
             else:
-                if i in [1, 2, 3, 4, 5]:
+                if i in [1, 2, 3, 4, 5, 6]:
                     event_list[i].strategy()
                     break  # 红灯，斑马线，障碍物，上桥，雷达阻塞运行
                 event_list[i].strategy()

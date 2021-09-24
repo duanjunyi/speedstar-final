@@ -441,17 +441,25 @@ class YellowBackEvent(DriverEvent):
              (3)黄灯位于图片的上方，即y_max<0.2h
              (4)连续1个输出满足上述要求
              档位调为R
-    is_end: 超声波或者雷达返回靠边信息
-    strategy: 倒车，先转弯后倒车
-    process: mode='R' ---> direction=direction&speed=speed ---> speed=0
+    is_end: 超声波距离过近
+    strategy: 先向左转弯再向右转弯再直线倒车，转弯事件待调
+    process: mode='N' ---> mode='R'&direction=direction&speed=speed ---> speed=0
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed, score_limit, range_limit):
+    def __init__(self, driver, scale_prop, y_limit, speed, score_limit, range_limit, turn_time, back_direction):
         super(YellowBackEvent,self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.speed = speed
         self.range_limit = range_limit
+        self.turn_time = turn_time
+        self.back_direction = back_direction
+        self.phase = 1
+        self.timer1 = threading.Timer(self.turn_time, self.delay1)
+        self.timer2 = threading.Timer(self.turn_time, self.delay2)
+        self.timer1.setDaemon(True)
+        self.timer2.setDaemon(True)
+
 
     def is_start(self):
         width = 1280
@@ -459,13 +467,37 @@ class YellowBackEvent(DriverEvent):
         flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(6)
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
         if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+            self.driver.set_mode('N')
+            self.timer1.start()
             return True
         return False
 
     def is_end(self):
-        return True
+        supersonic = self.driver.get_supersonic()
+        if supersonic < self.range_limit:
+            self.driver.set_speed(0)
+            self.driver.set_mode('P')
+            return True
+        return False
 
     def strategy(self):
+        self.driver.set_mode('R')
+        if self.phase == 1:
+            self.driver.set_speed(self.speed)
+            self.driver.set_direction(self.back_direction)
+        elif self.phase == 2:
+            self.driver.set_speed(self.speed)
+            self.driver.set_direction(50 * 2 - self.back_direction)
+        elif self.phase == 3:
+            self.driver.set_speed(self.speed)
+            self.driver.set_direction(50)
         return True
+
+    def delay1(self):
+        self.timer2.start()
+        self.phase = 2
+
+    def delay2(self):
+        self.phase = 3
 
 
