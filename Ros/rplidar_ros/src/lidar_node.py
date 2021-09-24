@@ -33,6 +33,7 @@ class lidar_node():
         self.pos_bias = 0   # 位置偏差，>0表示小车偏右
         self.ang_bias = 0   # 角度偏差，>0表示小车偏右
         self.center = (260, 260)
+
         self.roi = (80, 100, 20)  # halfwidth, forward, backward
         self.extra_roi_width = 100
         self.halfwidth, self.forward, self.backward = self.roi
@@ -109,8 +110,8 @@ class lidar_node():
         img_roi_pre = self.lidar_img[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]:xc+self.roi[0]]
         img_mask[:, self.extra_roi_width-1:width - self.extra_roi_width-1] = img_roi_pre
         img_roi = img_mask
-        cv2.imshow('img_roi', img_roi)
-        cv2.waitKey(5)
+        # cv2.imshow('img_roi', img_roi)
+        # cv2.waitKey(5)
         # 霍夫变换检测直线
         lines = cv2.HoughLines(img_roi, 4.5, np.pi/180, 70, 40)
         if lines is None or len(lines)<2:
@@ -144,7 +145,8 @@ class lidar_node():
         rho, theta = self.line_mid
 
         # 计算中心点到两直线的平分线的距离 pos_bias
-        c_pt = (self.halfwidth, self.forward) # (x, y)
+        # 注意增加mask后，中心点坐标改变了
+        c_pt = (self.halfwidth + self.extra_roi_width, self.forward) # (x, y)
         # 直线方程 sin(theta)y + cos(theta)x - rho = 0
         # 乘以 +-1 使得x前系数为正，这样代入 c_pt 后计算出的值能反应出偏差
         # 正表示，c_pt 在线右边，负表示在左边
