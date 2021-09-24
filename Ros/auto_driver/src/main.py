@@ -52,7 +52,7 @@ def main():
             if event_list[i].is_end():
                 event_running.remove(i)
             else:
-                if i in [1, 2, 3, 4, 5, 6]:
+                if i in [0, 1, 2, 3, 4, 5]:
                     event_list[i].strategy()
                     break  # 红灯，斑马线，障碍物，上桥，雷达阻塞运行
                 event_list[i].strategy()
