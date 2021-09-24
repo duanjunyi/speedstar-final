@@ -26,7 +26,7 @@ if __name__ == '__main__':
     cap = CapInit()
 
     frame_cnt = 0
-    while frame_cnt < 1000:  # 保存1000帧
+    while True:  # 保存1000帧
         ret, frame = cap.read()
         if ret:
             if frame_cnt==0: # 为视频第一帧
