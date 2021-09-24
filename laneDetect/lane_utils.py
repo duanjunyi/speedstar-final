@@ -23,7 +23,7 @@ class laneDetect:
         self.roiXRatio = roiXRatio                  # 遮罩保留的y轴坐标范围，以下方底边为起始点，比例定义终止位置
         self.win_w = winWidth                       # 窗宽
         self.win_h = int(self.frame_h // winNum)    # 窗高
-        self.win_n = winNum                         # 窗数
+        self.win_n = winNum-1                         # 窗数
         self.show = isShow                          # 是否绘图显示
         self.road_w_pix = roadWidPix                # 车道宽（像素,默认700）
         self.road_w_cm  = roadWidCm                 # 道路宽度 单位：cm
@@ -32,16 +32,26 @@ class laneDetect:
         self.pix_thr = pixThr                       # 一个窗中检出车道线需满足 非零像素 > minpix
         self.lane_xc = np.zeros((2, self.win_n)).astype(np.int32)  # 左右车道线中心点x坐标，lane_center_x[0]为左，[1]为右
         self.lane_xc[1, :] = frameWidth-1
-        self.lane_yc = np.arange(int(self.frame_h - 0.5*self.win_h), 0, -self.win_h)  # 车道线中心点 y 坐标
+        self.lane_xc[1, 0] = frameWidth-500
+        self.lane_yc = np.arange(int(self.frame_h - 1.5*self.win_h), 0, -self.win_h)  # 车道线中心点 y 坐标
         self.lane_flag = np.full((2, self.win_n), False, np.bool_)      # 左右车道线 检出标志位
-        self.lane_curve = [None, None]                               # 左右拟合曲线
+        self.lane_curve = [None, None]
         self.bias = 0.0            # veh_pos - cen_pos, >0偏右，<0偏左，cm
         self.slope = 0.0           # 斜率
         self.vip = vip            # very important point, bias 和 slop 计算的层数 0 ~ win_n-1
 
+    def refresh(self):
+        """ 刷新 """
+        self.lane_xc = np.zeros((2, self.win_n)).astype(np.int32)  # 左右车道线中心点x坐标，lane_center_x[0]为左，[1]为右
+        self.lane_xc[1, :] = self.frame_w-1
+        self.lane_flag = np.full((2, self.win_n), False, np.bool_)      # 左右车道线 检出标志位
+        self.lane_curve = [None, None]
+        self.bias = 0.0            # veh_pos - cen_pos, >0偏右，<0偏左，cm
+        self.slope = 0.0           # 斜率
+
     def spin(self, img):
         #--- 校正，二值化，透视变化
-        img_prep = self.preprocess(img)
+        img_prep = self.preprocess_hsv(img)
         if self.show:
             img_show = np.repeat(img_prep[:, :, None], 3, axis=2)
 
@@ -162,9 +172,9 @@ class laneDetect:
             cv2.namedWindow('result', cv2.WINDOW_NORMAL)
             cv2.imshow('result', result)
             cv2.waitKey(1)
-            c = cv2.waitKey(0)
-            if c == 27:
-                exit()
+            # c = cv2.waitKey(0)
+            # if c == 27:
+            #     exit()
 
         return 0, 0
 
@@ -182,6 +192,52 @@ class laneDetect:
         gray_img_1c = np.mean(gray_img, axis=2).astype(np.uint8)  # 单通道化
         perspect_img = cv2.warpPerspective(gray_img_1c, self.Mwarp, (gray_Blur.shape[1], gray_Blur.shape[0]),
                                             cv2.INTER_LINEAR)  # 透视变换
+        return perspect_img
+
+
+    def preprocess_hsv(self, img):
+        """
+        取下方区域，矫正畸变，inRange，透视变换
+        """
+        hsv_range = [ 19, 125, 145, 77, 254, 255]
+        lower_color = np.array(hsv_range[:3])  # 分别对应着HSV中的最小值
+        upper_color = np.array(hsv_range[3:])
+
+        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  # 将BGR图像转换为HSV格式
+        gray_img_1c = cv2.inRange(img_hsv, lower_color, upper_color)
+        gray_img_1c = cv2.dilate(gray_img_1c, self.kernal, iterations = 1)  # 膨胀
+        # gray_img_1c = cv2.erode(gray_img_1c, self.kernal, iterations=1)  # 腐蚀
+        perspect_img = cv2.warpPerspective(gray_img_1c, self.Mwarp, (gray_img_1c.shape[1], gray_img_1c.shape[0]),
+                                            cv2.INTER_LINEAR)  # 透视变换
+        # 如果右车道线存在，剔除右边的像素
+        if self.lane_curve[1] is not None and self.lane_curve[1][2] < 1270 \
+            and np.polyval(self.lane_curve[1], 720) < 1270 and sum(self.lane_flag[1])>3:
+            # 首先计算右车道线的拟合点
+            mask = np.full_like(perspect_img, 255, dtype=np.uint8)
+            y = np.concatenate([self.lane_yc, [0]])
+            ptx = np.polyval(self.lane_curve[1],  y).astype(int)
+            # 拟合点包围的部分
+            pts = np.vstack([ptx, y]).T
+            pts = np.concatenate([pts, np.array([[1280, 0], [1280, 720]])])  # 加入右上角的点
+            pts[:, 0] = pts[:, 0] + 100  # 向右平移50像素
+            cv2.fillPoly(mask, [pts,], 0)
+            perspect_img = cv2.bitwise_and(perspect_img, mask)
+
+        # 如果左车道线存在，剔除左边的像素
+        if self.lane_curve[0] is not None and self.lane_curve[0][2] > 100 \
+            and np.polyval(self.lane_curve[0], 720) >100 and sum(self.lane_flag[0])>9:
+            # 首先计算右车道线的拟合点
+            mask = np.full_like(perspect_img, 255, dtype=np.uint8)
+            y = np.concatenate([self.lane_yc, [0]])
+            ptx = np.polyval(self.lane_curve[0],  y).astype(int)
+            # 拟合点包围的部分
+            pts = np.vstack([ptx, y]).T
+            pts = np.concatenate([pts, np.array([[0, 0], [0, 720]])])  # 加入右上角的点
+            pts[:, 0] = pts[:, 0] - 100  # 向右平移50像素
+            cv2.fillPoly(mask, [pts,], 0)
+
+            perspect_img = cv2.bitwise_and(perspect_img, mask)
+
         return perspect_img
 
 
@@ -290,13 +346,13 @@ class laneDetect:
         yc = self.lane_yc[i]
         yl, yh = int(yc - self.win_h//2), int(yc + self.win_h//2)
         hist_x = np.sum(img[yl:yh, :], axis=0)          # 计算 x方向直方图 [x,]
-        mid_x = (self.lane_xc[0, i] + self.lane_xc[1, i]) // 2
-        if mid_x > 0:
-            max_i = int(np.argmax(hist_x[:mid_x]))
+        mid_x = (self.lane_xc[0, i] + self.lane_xc[1, i]) // 2  # 分为两边
+        if mid_x > 100:
+            max_i = int(np.argmax(hist_x[:mid_x-100]))
             if max_i>0 and max_i<self.frame_w and hist_x[max_i] > 10:
                 l_xc = max_i
         if mid_x < self.frame_w:
-            max_i = int(np.argmax(hist_x[mid_x:]))
+            max_i = int(np.argmax(hist_x[mid_x:])) + mid_x
             if max_i>0 and max_i<self.frame_w and hist_x[max_i] > 10:
                 r_xc = max_i
 
@@ -315,32 +371,25 @@ class laneDetect:
         """ 更新拟合曲线，防止曲线突变 """
         if self.lane_curve[side] is None:
             self.lane_curve[side] = curve_new
-        # diff = self.lane_curve[side][1] * curve_new[1]  # y=0时的梯度 dx/dy 不能突变
-        # centers = np.sum(self.lane_flag[side])          # 检出点数
-        # if diff < -0 and centers < 10:
-        #     return
-        # ymid = - curve_new[1] / curve_new[0] / 2
-        # cnt = 0
+        diff = self.lane_curve[side][1] * curve_new[1]  # y=0时的梯度 dx/dy 不能突变
+        centers = np.sum(self.lane_flag[side])          # 检出点数
+        if diff < -0 and centers < 6 and np.abs(self.lane_curve[side][2] - curve_new[2]) > 300:
+            return
+        ymid = - curve_new[1] / curve_new[0] / 2
+        if ymid>200 and ymid<620 and abs(curve_new[0])>5e-3:
+            return
         self.lane_curve[side] = curve_new
 
-    # def curvature(self, curve, y):
-    #     """ 计算曲率半径 """
-    #     return ((1 + (2*curve[0] * y * y_cmPerPixel + curve[1])**2)**1.5)\
-    #                     / max(np.absolute(2*curve[0]), 0.001)
+
 
 
 if __name__ == '__main__':
     # 透视变换
     # 快速绕圈
-    # src_points = np.array([[399, 640], [872, 635], [261, 710], [998, 713]], dtype="float32")
-    # dst_points = np.array([[376, 24], [893, 24], [366, 699], [895, 702]], dtype="float32")
-    # challenge_video
-    # src_points = np.array([[256, 448], [475, 438], [18, 532], [791, 525]], dtype="float32")
-    # dst_points = np.array([[386, 5], [841, 4], [378, 716], [860, 718]], dtype="float32")
-    # src_points = np.array([[6, 716], [8, 342], [1263, 363], [1275, 717]], dtype="float32")
-    # dst_points = np.array([[524, 714], [11, 345], [1271, 348], [762, 710]], dtype="float32")
-    src_points = np.array([[6, 356], [1274, 360], [3, 716], [1275, 715]], dtype="float32")
-    dst_points = np.array([[19, 234], [1268, 89], [513, 712], [780, 709]], dtype="float32")
+    # src_points = np.array([[274, 552], [533, 410], [911, 400], [1220, 561]], dtype="float32")
+    # dst_points = np.array([[456, 702], [499, 499], [775, 490], [767, 706]], dtype="float32")
+    src_points = np.array([[236, 545], [510, 399], [812, 387], [1162, 544]], dtype="float32")
+    dst_points = np.array([[414, 706], [446, 441], [868, 430], [863, 708]], dtype="float32")
 
     frameWidth = 1280  # 宽
     frameHeight = 720  # 长
@@ -361,11 +410,11 @@ if __name__ == '__main__':
     pixThr = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
 
     # 距离映射
-    roadWidCm = 50      # 道路宽度 单位：cm
-    roadWidPix = 500    # 透视变换后车道线像素数
+    roadWidCm = 80      # 道路宽度 单位：cm
+    roadWidPix = 850    # 透视变换后车道线像素数
     isShow = True       # 是否返回可视化图片
-    vip = 4
-    cap = cv2.VideoCapture(BASE_DIR + '\\video\\test3.mp4')  # 读入视频
+    vip = 3
+    cap = cv2.VideoCapture(BASE_DIR + '\\video\\test4.mp4')  # 读入视频
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
     cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
