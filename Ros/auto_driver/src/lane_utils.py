@@ -60,7 +60,8 @@ class laneDetect:
             # 窗中心
             win_yc = self.lane_yc[i]                                # 第i层左右车道预测窗中心 y 坐标
             # l_win_xc, r_win_xc = self.check_order(*self.porpose_win_xc(img_prep, i))      # 第i层左右车道预测窗中心 x 坐标
-            l_win_xc, r_win_xc = self.check_order2(*self.porpose_win_xc(img_prep, i), img_prep, win_yc) # 第i层左右车道预测窗中心 x 坐标
+            l_win, r_win = self.porpose_win_xc(img_prep, i)
+            l_win_xc, r_win_xc = self.check_order2(l_win, r_win ,img_prep, win_yc) # 第i层左右车道预测窗中心 x 坐标
             # 生成窗
             l_win_pts = self.get_win(img_prep, xc=l_win_xc, yc=win_yc)  # 左窗中所有像素点坐标 [n,2]
             r_win_pts = self.get_win(img_prep, xc=r_win_xc, yc=win_yc)  # 右窗

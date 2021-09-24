@@ -52,7 +52,7 @@ def main():
         theta = msg.thetax
         if theta < -1700 and slope_flag==0: # 检测到开始下坡
             slope_flag = 1
-        elif abs(theta) < 200 and slope_flag==1 # 检测到下坡结束
+        elif abs(theta) < 200 and slope_flag==1: # 检测到下坡结束
             slope_flag = 0
             laneDet.refresh()
 
