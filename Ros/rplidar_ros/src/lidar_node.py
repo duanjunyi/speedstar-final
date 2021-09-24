@@ -201,7 +201,7 @@ class lidar_node():
         img_show = np.dstack((self.lidar_img, self.lidar_img, self.lidar_img)) # 转三通道
         img_roi = img_show[yc-self.roi[1]:yc+self.roi[2], xc-self.roi[0]-self.extra_roi_width:xc+self.roi[0]+self.extra_roi_width]  # 绘图区域
         cv2.rectangle(img_show, (xc-self.roi[0], yc-self.roi[1]),
-                                (xc+self.roi[0], yc+self.roi[2]), (0, 255, 0), 2)
+                                (xc+self.roi[0], yc+self.roi[2]), (0, 255, 0), 4)
         cv2.rectangle(img_show, (xc - self.roi[0] - self.extra_roi_width, yc - self.roi[1]),
                       (xc + self.roi[0] + self.extra_roi_width, yc + self.roi[2]), (255, 255, 0), 2)
         self.drawline(img_roi, self.line1, (0,0,255))
