@@ -48,7 +48,7 @@ class FollowLaneEvent(DriverEvent):
         # rules = np.array([-35, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 35])
         # self.controller = FuzzyCtr1D(bias_range, rules)
         # 档位控制规则 0 ~ 7 档
-        self.gear_rules = [0, 3, 5, 10, 15, 20, 25, 35]
+        # self.gear_rules = [0, 0, 0, 15, 20, 30, 30, 35, 40]
 
     def is_start(self):
         """ 事件是否开始 """
@@ -65,13 +65,14 @@ class FollowLaneEvent(DriverEvent):
         """ 控制策略 """
         bias, gear = self.driver.get_lane()
         bias = -bias
-        if gear == 0: # 直道bias控制
-            self.direction = 50 # int( self.controller.control(bias) + 50 )
+        if bias != 0: # 直道bias控制
+            if bias > 80:
+                self.direction = 53
+            elif bias < -80:
+                self.direction = 47
         else:  # 弯道档位控制
-            sign = 1 if gear > 0 else -1
-            self.direction = int( sign * self.gear_rules[int(abs(gear))] + 50 )
-        if self.direction != self.driver.get_direction():
-            self.driver.set_direction(self.direction)
+            self.direction = int( gear + 50 )
+        self.driver.set_direction(self.direction)
 
 
 class FollowLidarEvent(DriverEvent):

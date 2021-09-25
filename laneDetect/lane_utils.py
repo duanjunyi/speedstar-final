@@ -34,9 +34,12 @@ class laneDetect:
         self.lane_curve = [None, None]
         self.bias = 0.0            # veh_pos - cen_pos, >0偏右，<0偏左，cm
         self.gear = 0              # 档位
-        self.gear_set = [0, 200, 400, 600, 800, 1000, 1200, 1400]         # 档位设置()
+        # ------------------         0    1    2    3    4     5     6     7
+        self.gear_set      =        [0, 200, 400, 600, 800,    950, 1100, np.inf]
+        self.gear_output = np.array( [[0,   0,   0,   0,   0,   25,   45,   50],   # 入弯参数
+                                      [0,   0,   0,   5,  20,   25,   45,   50]])  # 出弯参数
+        self.gear_idx = 0  #默认用入弯参数
         self.vip = vip             # very important point, bias 和 slop 计算的层数 0 ~ win_n-1
-
 
     def refresh(self):
         """ 刷新 """
@@ -55,7 +58,7 @@ class laneDetect:
         """
         xc = 640
         color = (0, 0, 255)
-        for i in range(len(self.gear_set)):
+        for i in range(len(self.gear_set)-1):
             if self.gear_set[i] < xc:
                 cv2.line(img, (xc-self.gear_set[i], 0), (xc-self.gear_set[i], 50), color, 2)
                 cv2.line(img, (xc+self.gear_set[i], 0), (xc+self.gear_set[i], 50), color, 2)
@@ -65,34 +68,39 @@ class laneDetect:
 
 
     def calc_gear(self, side):
-        """ 计算档位 side 0表示左线，1表示右线"""
+        """ 计算档位 side 0表示左线，1表示右线 """
         a, b, c = self.lane_curve[side]  # ay^2 + by + c = x
         if c >=0 and c <= 1279:  # 线与框的交点在上方
             calib = c - 640  # 刻度，以(640, 0)为原点
-        elif c < 0:  # 焦点在左边
-            tmp = np.sqrt(b**2 - 4*a*c)
+        elif c < 0:  # 交点在左边
+            tmp = np.sqrt(max(b**2 - 4*a*c, 0))
             if a > 0 :
                 calib = -max((-b + tmp) / (2 * a), (-b - tmp) / (2 * a))-640
             else:
                 calib = -min((-b + tmp) / (2 * a), (-b - tmp) / (2 * a))-640
-        elif c > 1279: # 焦点在右侧
-            c = c - 1280
-            tmp = np.sqrt(b**2 - 4*a*c)
+        elif c > 1279: # 交点在右侧
+            c = c - 1279
+            tmp = np.sqrt(max(b**2 - 4*a*c, 0))
             if a > 0 :
                 calib = min((-b + tmp) / (2 * a), (-b - tmp) / (2 * a)) + 640
             else:
                 calib = max((-b + tmp) / (2 * a), (-b - tmp) / (2 * a)) + 640
         # 计算档位
         gear = np.searchsorted(self.gear_set, np.abs(calib))
-        if calib < 0:  # -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7
-            gear = -gear
-        if side == 1: # 只剩右边线转换成： -7, -6, -5, -4, -3, -2, -1, 0, 0, 1, 2, 3, 4, 5
-            if gear > 0:
-                gear = max(gear - 2, 0)
-        if side == 0: # 只剩右边线转换成： -5, -4, -3, -2, -1, 0, 0, 1, 2, 3, 4, 5, 6, 7
-            if gear < 0:
-                gear = min(gear + 2, 0)
-        return gear
+        gear_sign = -1 if calib<=0 else 1  # 向左还是向右转
+        if side == 1:  # 只剩右边线转换成：
+            if gear_sign == 1: # 若右边线在右边
+                gear = max(gear - 5, 0)
+        if side == 0: # 只剩右边线转换成：
+            if gear_sign == 0: # 若左边线在左边
+                gear = min(gear - 5, 0)
+        # 判断用哪组参数,首先更新下降标志位
+        if gear > 5 and self.gear_idx == 0:
+            self.gear_idx = 1 # 之前在入弯，现在到6了，改用出弯参数
+        if gear <= 1 and self.gear_idx == 1:  # 回正改回入弯参数
+            self.gear_idx = 0 # 之前在出弯，现在回正了改用入弯参数
+        gear_out = self.gear_output[self.gear_idx][gear] * gear_sign
+        return int(gear_out)
 
     def spin(self, img):
         #--- 校正，二值化，透视变化
@@ -153,7 +161,7 @@ class laneDetect:
             rx = np.polyval(self.lane_curve[1], self.lane_yc[self.vip])
             cen_pos = (lx + rx) / 2.0       # 车道中心线位置
             veh_pos = self.frame_w / 2.0    # 小车位置，目前定义为画面中心
-            self.bias = (veh_pos - cen_pos) * self.cm_per_pix
+            self.bias = (veh_pos - cen_pos)
             self.gear = 0   # 如果两条车道线都存在，档位为0，用bias控制
             if not self.show:
                 return self.bias, self.gear
@@ -161,7 +169,7 @@ class laneDetect:
         elif l_win_nums >= r_win_nums and l_win_nums>0:  # 只检出左车道线
             cen_pos = np.polyval(self.lane_curve[0], self.lane_yc[self.vip] ) + self.road_w_pix / 2  # 车道中心线位置
             veh_pos = self.frame_w / 2.0
-            self.bias = (veh_pos - cen_pos) * self.cm_per_pix
+            self.bias = (veh_pos - cen_pos)
             self.gear = self.calc_gear(0)
             if not self.show:
                 return self.bias, self.gear
@@ -169,7 +177,7 @@ class laneDetect:
         elif r_win_nums > l_win_nums:   # 只检出右车道线
             cen_pos = np.polyval(self.lane_curve[1], self.lane_yc[self.vip] ) - self.road_w_pix / 2  # 车道中心线位置
             veh_pos = self.frame_w / 2.0
-            self.bias = (veh_pos - cen_pos) * self.cm_per_pix
+            self.bias = (veh_pos - cen_pos)
             self.gear = self.calc_gear(1)
             if not self.show:
                 return self.bias, self.gear
@@ -441,8 +449,8 @@ if __name__ == '__main__':
     roadWidCm = 80      # 道路宽度 单位：cm
     roadWidPix = 850    # 透视变换后车道线像素数
     isShow = True       # 是否返回可视化图片
-    vip = 3
-    cap = cv2.VideoCapture(BASE_DIR + '\\video\\test6.mp4')  # 读入视频
+    vip = 1
+    cap = cv2.VideoCapture(BASE_DIR + '\\video\\test4.mp4')  # 读入视频
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
     cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率

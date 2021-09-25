@@ -12,7 +12,7 @@ import time
 class laneDetect:
     """ 车道线检测类 """
     def __init__(self, Mwarp, kerSz, frameHeight, frameWidth, winWidth, winNum,
-            winThr, pixThr, roadWidCm, roadWidPix, isShow, vip, gear_set):
+            winThr, pixThr, roadWidCm, roadWidPix, isShow, vip):
         self.Mwarp  = Mwarp                         # 透视变换矩阵
         self.kernal = np.ones(kerSz, np.uint8)      # 定义膨胀与腐蚀的核
         self.frame_h = frameHeight
@@ -34,9 +34,12 @@ class laneDetect:
         self.lane_curve = [None, None]
         self.bias = 0.0            # veh_pos - cen_pos, >0偏右，<0偏左，cm
         self.gear = 0              # 档位
-        self.gear_set = gear_set         # 档位设置()
+        # ------------------         0    1    2    3    4     5     6     7
+        self.gear_set      =        [0, 200, 400, 600, 800,    950, 1100, np.inf]
+        self.gear_output = np.array( [[0,   0,   0,   0,   0,   25,   45,   50],   # 入弯参数
+                                      [0,   0,   0,   5,  20,   25,   45,   50]])  # 出弯参数
+        self.gear_idx = 0  #默认用入弯参数
         self.vip = vip             # very important point, bias 和 slop 计算的层数 0 ~ win_n-1
-
 
     def refresh(self):
         """ 刷新 """
@@ -45,7 +48,7 @@ class laneDetect:
         self.lane_flag = np.full((2, self.win_n), False, np.bool_)      # 左右车道线 检出标志位
         self.lane_curve = [None, None]
         self.bias = 0.0            # veh_pos - cen_pos, >0偏右，<0偏左，cm
-        self.gear = 0             # 斜率
+        self.gear = 0            # 斜率
 
 
     def draw_gear_set(self, img):
@@ -55,7 +58,7 @@ class laneDetect:
         """
         xc = 640
         color = (0, 0, 255)
-        for i in range(len(self.gear_set)):
+        for i in range(len(self.gear_set)-1):
             if self.gear_set[i] < xc:
                 cv2.line(img, (xc-self.gear_set[i], 0), (xc-self.gear_set[i], 50), color, 2)
                 cv2.line(img, (xc+self.gear_set[i], 0), (xc+self.gear_set[i], 50), color, 2)
@@ -65,34 +68,39 @@ class laneDetect:
 
 
     def calc_gear(self, side):
-        """ 计算档位 side 0表示左线，1表示右线"""
+        """ 计算档位 side 0表示左线，1表示右线 """
         a, b, c = self.lane_curve[side]  # ay^2 + by + c = x
         if c >=0 and c <= 1279:  # 线与框的交点在上方
             calib = c - 640  # 刻度，以(640, 0)为原点
-        elif c < 0:  # 焦点在左边
-            tmp = np.sqrt(b**2 - 4*a*c)
+        elif c < 0:  # 交点在左边
+            tmp = np.sqrt(max(b**2 - 4*a*c, 0))
             if a > 0 :
                 calib = -max((-b + tmp) / (2 * a), (-b - tmp) / (2 * a))-640
             else:
                 calib = -min((-b + tmp) / (2 * a), (-b - tmp) / (2 * a))-640
-        elif c > 1279: # 焦点在右侧
-            c = c - 1280
-            tmp = np.sqrt(b**2 - 4*a*c)
+        elif c > 1279: # 交点在右侧
+            c = c - 1279
+            tmp = np.sqrt(max(b**2 - 4*a*c, 0))
             if a > 0 :
                 calib = min((-b + tmp) / (2 * a), (-b - tmp) / (2 * a)) + 640
             else:
                 calib = max((-b + tmp) / (2 * a), (-b - tmp) / (2 * a)) + 640
         # 计算档位
         gear = np.searchsorted(self.gear_set, np.abs(calib))
-        if calib < 0:  # -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7
-            gear = -gear
-        if side == 1: # 只剩右边线转换成： -7, -6, -5, -4, -3, -2, -1, 0, 0, 1, 2, 3, 4, 5
-            if gear > 0:
-                gear = max(gear - 2, 0)
-        if side == 0: # 只剩右边线转换成： -5, -4, -3, -2, -1, 0, 0, 1, 2, 3, 4, 5, 6, 7
-            if gear < 0:
-                gear = min(gear + 2, 0)
-        return gear
+        gear_sign = -1 if calib<=0 else 1  # 向左还是向右转
+        # if side == 1:  # 只剩右边线转换成：
+        #     if gear_sign == 1: # 若右边线在右边
+        #         gear = max(gear - 5, 0)
+        # if side == 0: # 只剩右边线转换成：
+        #     if gear_sign == 0: # 若左边线在左边
+        #         gear = min(gear - 5, 0)
+        # 判断用哪组参数,首先更新下降标志位
+        if gear > 5 and self.gear_idx == 0:
+            self.gear_idx = 1 # 之前在入弯，现在到6了，改用出弯参数
+        if gear <= 1 and self.gear_idx == 1:  # 回正改回入弯参数
+            self.gear_idx = 0 # 之前在出弯，现在回正了改用入弯参数
+        gear_out = self.gear_output[self.gear_idx][gear] * gear_sign
+        return int(gear_out)
 
     def spin(self, img):
         #--- 校正，二值化，透视变化
@@ -153,7 +161,7 @@ class laneDetect:
             rx = np.polyval(self.lane_curve[1], self.lane_yc[self.vip])
             cen_pos = (lx + rx) / 2.0       # 车道中心线位置
             veh_pos = self.frame_w / 2.0    # 小车位置，目前定义为画面中心
-            self.bias = (veh_pos - cen_pos) * self.cm_per_pix
+            self.bias = (veh_pos - cen_pos)
             self.gear = 0   # 如果两条车道线都存在，档位为0，用bias控制
             if not self.show:
                 return self.bias, self.gear
@@ -161,7 +169,7 @@ class laneDetect:
         elif l_win_nums >= r_win_nums and l_win_nums>0:  # 只检出左车道线
             cen_pos = np.polyval(self.lane_curve[0], self.lane_yc[self.vip] ) + self.road_w_pix / 2  # 车道中心线位置
             veh_pos = self.frame_w / 2.0
-            self.bias = (veh_pos - cen_pos) * self.cm_per_pix
+            self.bias = 0
             self.gear = self.calc_gear(0)
             if not self.show:
                 return self.bias, self.gear
@@ -169,7 +177,7 @@ class laneDetect:
         elif r_win_nums > l_win_nums:   # 只检出右车道线
             cen_pos = np.polyval(self.lane_curve[1], self.lane_yc[self.vip] ) - self.road_w_pix / 2  # 车道中心线位置
             veh_pos = self.frame_w / 2.0
-            self.bias = (veh_pos - cen_pos) * self.cm_per_pix
+            self.bias = 0
             self.gear = self.calc_gear(1)
             if not self.show:
                 return self.bias, self.gear
@@ -223,193 +231,6 @@ class laneDetect:
         return 0, 0
 
 
-    def preprocess_hsv(self, img):
-        """
-        取下方区域，矫正畸变，inRange，透视变换
-        """
-        hsv_range = [ 19, 125, 145, 77, 254, 255]
-        lower_color = np.array(hsv_range[:3])  # 分别对应着HSV中的最小值
-        upper_color = np.array(hsv_range[3:])
-
-        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  # 将BGR图像转换为HSV格式
-        gray_img_1c = cv2.inRange(img_hsv, lower_color, upper_color)
-        gray_img_1c = cv2.dilate(gray_img_1c, self.kernal, iterations = 1)  # 膨胀
-        # gray_img_1c = cv2.erode(gray_img_1c, self.kernal, iterations=1)  # 腐蚀
-        perspect_img = cv2.warpPerspective(gray_img_1c, self.Mwarp, (gray_img_1c.shape[1], gray_img_1c.shape[0]),
-                                            cv2.INTER_LINEAR)  # 透视变换
-        # 如果右车道线存在，剔除右边的像素
-        if self.lane_curve[1] is not None and self.lane_curve[1][2] < 1270 \
-            and np.polyval(self.lane_curve[1], 720) < 1270 and sum(self.lane_flag[1])>3:
-            # 首先计算右车道线的拟合点
-            mask = np.full_like(perspect_img, 255, dtype=np.uint8)
-            y = np.concatenate([self.lane_yc, [0]])
-            ptx = np.polyval(self.lane_curve[1],  y).astype(int)
-            # 拟合点包围的部分
-            pts = np.vstack([ptx, y]).T
-            pts = np.concatenate([pts, np.array([[1280, 0], [1280, 720]])])  # 加入右上角的点
-            pts[:, 0] = pts[:, 0] + 100  # 向右平移50像素
-            cv2.fillPoly(mask, [pts,], 0)
-            perspect_img = cv2.bitwise_and(perspect_img, mask)
-
-        # 如果左车道线存在，剔除左边的像素
-        if self.lane_curve[0] is not None and self.lane_curve[0][2] > 100 \
-            and np.polyval(self.lane_curve[0], 720) >100 and sum(self.lane_flag[0])>9:
-            # 首先计算右车道线的拟合点
-            mask = np.full_like(perspect_img, 255, dtype=np.uint8)
-            y = np.concatenate([self.lane_yc, [0]])
-            ptx = np.polyval(self.lane_curve[0],  y).astype(int)
-            # 拟合点包围的部分
-            pts = np.vstack([ptx, y]).T
-            pts = np.concatenate([pts, np.array([[0, 0], [0, 720]])])  # 加入右上角的点
-            pts[:, 0] = pts[:, 0] - 100  # 向右平移50像素
-            cv2.fillPoly(mask, [pts,], 0)
-
-            perspect_img = cv2.bitwise_and(perspect_img, mask)
-
-        return perspect_img
-
-
-    def get_win(self, img, xc, yc):
-        """
-        从图中取出一个窗中所有像素点的x位置, [n, 1(x, )]
-        """
-        half_w = self.win_w // 2
-        half_h = self.win_h // 2
-        ylow = max(yc-half_h, 0)
-        yhigh = min(yc+half_h, self.frame_h)
-        xlow = min(max(xc-half_w, 0), self.frame_w)
-        xhigh = max(min(xc+half_w, self.frame_w), 0)
-        win = img[ylow:yhigh, xlow:xhigh]
-        good_x = win.nonzero()[1] + xc - self.win_w//2  # 非零像素 x 坐标
-        return good_x
-
-    def check_order(self, l_xc, r_xc):
-        """ 对 porpose_win_xc 得到的窗中心进行检查，避免两窗过于接近 """
-        if (r_xc-l_xc)<50:
-            xc_mean = np.mean(self.lane_xc, axis=1)  # 窗xc的平均值
-            error = np.abs(xc_mean - [l_xc, r_xc])
-            if error[0] < error[1]:
-                r_xc = l_xc + self.road_w_pix
-            else:
-                l_xc = r_xc - self.road_w_pix
-        return l_xc, r_xc
-
-    def check_order2(self, l_xc, r_xc, img, yc):
-        """ 对 porpose_win_xc 得到的窗中心进行检查 """
-        xc_mean = np.mean(self.lane_xc, axis=1)  # 窗xc的平均值
-        error = xc_mean - [l_xc, r_xc]
-        # 避免左窗在右车道线，右窗在更右侧或相反情况（检查左车道线左侧和右车道线右侧）
-        if l_xc > self.frame_w//2:
-            win_pts = self.get_win(img, l_xc-self.road_w_pix, yc)
-            if len(win_pts) > self.pix_thr:
-                r_xc = l_xc
-                l_xc = l_xc-self.road_w_pix
-        elif r_xc < self.frame_w//2:
-            win_pts = self.get_win(img, r_xc+self.road_w_pix, yc)
-            if len(win_pts) > self.pix_thr:
-                l_xc = r_xc
-                r_xc = r_xc+self.road_w_pix
-        # 避免两窗在同一车道线上，或者左窗右窗顺序相反
-        if (r_xc-l_xc)<80:
-            # error更大的窗为错误窗
-            if abs(error[0]) < abs(error[1]):
-                r_xc = l_xc + self.road_w_pix
-            else:
-                l_xc = r_xc - self.road_w_pix
-        return l_xc, r_xc
-
-    def porpose_win_xc(self, img, i):
-        """
-        提议车道检测窗位置
-        获得第i个层两窗的x坐标，其来源有如下几个（按照优先级排序）：
-        1. 若上一帧第 i 个窗检测到车道线，沿用x坐标
-        2. 若上一帧未检出，但本帧第 i-1 个窗检出车道线，沿用其x坐标
-        3. 经过上述两个步骤若只得到一侧，用一侧+/-路宽推导另一侧
-        4. 用直方图计算，若只算出一侧，用一侧+/-路宽推导另一侧
-        5. 用第 i-1 窗和 i-2 窗中心计算 = 2*[i-1]-[i-2]
-        """
-        l_xc, r_xc = None, None
-        # left
-        if self.lane_flag[0, i]:
-            l_xc = self.lane_xc[0, i]
-        # elif i>1 and self.lane_flag[0, i-1]:
-        #     l_xc = 2*self.lane_xc[0, i-1] - self.lane_xc[0, i-2]
-        elif i>0 and self.lane_flag[0, i-1]:
-            l_xc = self.lane_xc[0, i-1]
-
-        # right
-        if self.lane_flag[1, i]:
-            r_xc = self.lane_xc[1, i]
-        # elif i>1 and self.lane_flag[1, i-1]:
-        #     r_xc = 2*self.lane_xc[1, i-1] - self.lane_xc[1, i-2]
-        elif i>0 and self.lane_flag[1, i-1]:
-            r_xc = self.lane_xc[1, i-1]
-
-        # 如果l_xc，r_xc至少一个存在，则返回
-        if l_xc and r_xc:
-            return l_xc, r_xc
-        elif l_xc:
-            r_xc = l_xc + self.road_w_pix
-            return l_xc, r_xc
-        elif r_xc:
-            l_xc = r_xc - self.road_w_pix
-            return l_xc, r_xc
-
-        #--- 通过直方图计算
-        l_xc, r_xc = self.calc_hist_xc(img, i)
-
-        #--- 如果两个车道线都不存在
-        if not l_xc:
-            if i > 1:
-                l_xc = 2*self.lane_xc[0, i-1] - self.lane_xc[0, i-2]
-                r_xc = 2*self.lane_xc[1, i-1] - self.lane_xc[1, i-2]
-            else:
-                l_xc = self.lane_xc[0, i]
-                r_xc = self.lane_xc[1, i]
-        return int(l_xc), int(r_xc)
-
-    def calc_hist_xc(self, img, i):
-        """ 输入经过预处理的图片，以及层号，用过直方图统计输出两个检测框的 xc """
-        l_xc, r_xc = None, None
-        yc = self.lane_yc[i]
-        yl, yh = int(yc - self.win_h//2), int(yc + self.win_h//2)
-        hist_x = np.sum(img[yl:yh, :], axis=0)          # 计算 x方向直方图 [x,]
-        mid_x = (self.lane_xc[0, i] + self.lane_xc[1, i]) // 2  # 分为两边
-        if mid_x > 100:
-            max_i = int(np.argmax(hist_x[:mid_x-100]))
-            if max_i>0 and max_i<self.frame_w and hist_x[max_i] > 10:
-                l_xc = max_i
-        if mid_x < self.frame_w:
-            max_i = int(np.argmax(hist_x[mid_x:])) + mid_x
-            if max_i>0 and max_i<self.frame_w and hist_x[max_i] > 10:
-                r_xc = max_i
-
-        if l_xc and r_xc:
-            return l_xc, r_xc
-        elif l_xc:
-            r_xc = l_xc + self.road_w_pix
-            return l_xc, r_xc
-        elif r_xc:
-            l_xc = r_xc - self.road_w_pix
-            return l_xc, r_xc
-
-        return None, None
-
-    def update_curve(self, curve_new, side):
-        """ 更新拟合曲线，防止曲线突变 """
-        if self.lane_curve[side] is None:
-            self.lane_curve[side] = curve_new
-        diff = self.lane_curve[side][1] * curve_new[1]  # y=0时的梯度 dx/dy 不能突变
-        centers = np.sum(self.lane_flag[side])          # 检出点数
-        if diff < -0 and centers < 6 and np.abs(self.lane_curve[side][2] - curve_new[2]) > 300:
-            return
-        ymid = - curve_new[1] / curve_new[0] / 2
-        if ymid>200 and ymid<620 and abs(curve_new[0])>5e-3:
-            return
-        self.lane_curve[side] = curve_new
-
-
-
 
 """ 定义车道线检测对象 """
 # 透视变换
@@ -439,11 +260,9 @@ pixThr = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声�
 roadWidCm = 80      # 道路宽度 单位：cm
 roadWidPix = 850    # 透视变换后车道线像素数
 isShow = False       # 是否返回可视化图片
-vip = 3
+vip = 1
 
 # 档位设置
-gear_set = [0, 200, 400, 600, 800, 1000, 1200, 1400]
-
 laneDet = laneDetect(Mwarp, kerSz, frameHeight, frameWidth, winWidth, winNum,
-                    winThr, pixThr, roadWidCm, roadWidPix, isShow, vip, gear_set)
+                    winThr, pixThr, roadWidCm, roadWidPix, isShow, vip)
 
