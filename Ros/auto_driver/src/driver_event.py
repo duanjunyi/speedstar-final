@@ -44,11 +44,11 @@ class FollowLaneEvent(DriverEvent):
         self.timedelay = timedelay
         self.direction = 50
         # 定义gear=0时的模糊控制器
-        bias_range = [-40, -30, -20, -15, -8, -3, 0, 3, 8, 15, 20, 30, 40]
-        rules = np.array([-35, -25, -20, -15, -5, 0, 5, 10, 15, 20, 25, 35])
-        self.controller = FuzzyCtr1D(bias_range, rules)
+        # bias_range = [-40, -30, -20, -15, -8, -3, 0, 3, 8, 15, 20, 30, 40]
+        # rules = np.array([-35, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 35])
+        # self.controller = FuzzyCtr1D(bias_range, rules)
         # 档位控制规则 0 ~ 7 档
-        self.gear_rules = [0, 8, 12, 20, 25, 32, 40]
+        self.gear_rules = [0, 3, 5, 10, 15, 20, 25, 35]
 
     def is_start(self):
         """ 事件是否开始 """
@@ -66,7 +66,7 @@ class FollowLaneEvent(DriverEvent):
         bias, gear = self.driver.get_lane()
         bias = -bias
         if gear == 0: # 直道bias控制
-            self.direction = int( self.controller.control(bias) + 50 )
+            self.direction = 50 # int( self.controller.control(bias) + 50 )
         else:  # 弯道档位控制
             sign = 1 if gear > 0 else -1
             self.direction = int( sign * self.gear_rules[int(gear)] + 50 )
