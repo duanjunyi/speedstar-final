@@ -32,8 +32,10 @@ def main():
     follow_lidar_event = FollowLidarEvent(driver)
     yellow_back_event = YellowBackEvent(driver, scale_prop=0.2, y_limit=0.5, speed=10, score_limit=0.8, range_limit=250,
                                         turn_time=2, back_direction=65)
+    start_end_event = StartEndEvent(driver, scale_prop=0.2, y_limit=0.5, speed=10, score_limit=0.5, range_limit=250,
+                                    turn_time=2, back_direction=65)
 
-    event_list = [obstacle_event, red_stop_event, pedestrian_event, yellow_back_event, cross_bridge_event,
+    event_list = [obstacle_event, start_end_event, pedestrian_event, cross_bridge_event,
                   follow_lidar_event, green_go_event, follow_lane_event, speed_limited_event, speed_minimum_event]  # 默认为优先级排序，越靠前优先级越高
 
     #--- 主循环
@@ -57,9 +59,9 @@ def main():
             if event_list[i].is_end():
                 event_running.remove(i)
             else:
-                if i in [0, 1, 2, 3, 4, 5]:
+                if i in [0, 1, 2, 3, 4]:
                     event_list[i].strategy()
-                    break  # 红灯，斑马线，障碍物，上桥，雷达阻塞运行
+                    break
                 event_list[i].strategy()
 
         rate.sleep()

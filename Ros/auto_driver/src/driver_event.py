@@ -74,6 +74,7 @@ class FollowLaneEvent(DriverEvent):
         if self.direction != self.driver.get_direction():
             self.driver.set_direction(self.direction)
 
+
 class FollowLidarEvent(DriverEvent):
     '''
     雷达导航
@@ -213,6 +214,7 @@ class RedStopEvent(DriverEvent):
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
+        self.detect = 1
 
     def is_start(self):
         """ 事件是否开始 """
@@ -503,3 +505,68 @@ class YellowBackEvent(DriverEvent):
         self.phase = 3
 
 
+class StartEndEvent(DriverEvent):
+    def __init__(self, driver, scale_prop, y_limit, speed, score_limit, range_limit, turn_time, back_direction):
+        super(StartEndEvent, self).__init__(driver)
+        self.scale_prop = scale_prop
+        self.score_limit = score_limit
+        self.y_limit = y_limit
+        self.speed = speed
+        self.range_limit = range_limit
+        self.turn_time = turn_time
+        self.back_direction = back_direction
+        self.phase = 1
+        self.time = time.time()
+
+    def is_start(self):
+        width = 1280
+        height = 720
+        if self.phase == 1:
+            flag, x_min, y_min, x_max, y_max, score = self.driver.get_objs(2)
+            if flag and score > self.score_limit:
+                area = (x_max - x_min) * (y_max - y_min)
+                scale = area / (self.scale_prop * width * height)
+                if scale >= 1 and y_max <= self.y_limit * height:
+                    return True
+        if self.phase == 2:
+            flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(6)
+            scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
+            if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+                self.driver.set_mode('N')
+                return True
+        return False
+
+    def is_end(self):
+        if self.phase == 1:
+            if not self.is_start():
+                self.driver.set_mode('D')
+                self.phase = 2
+                return True
+        else:
+            supersonic = self.driver.get_supersonic()
+            if supersonic < self.range_limit:
+                self.driver.set_speed(0)
+                self.driver.set_mode('P')
+                return True
+        return False
+
+    def strategy(self):
+        if self.phase == 1:
+            self.driver.set_speed(0)
+            if self.driver.get_speed() <= 2:
+                self.driver.set_mode('N')
+        else:
+            self.driver.set_mode('R')
+            if self.phase == 2:
+                self.driver.set_speed(self.speed)
+                self.driver.set_direction(self.back_direction)
+                time.sleep(self.turn_time)
+                self.phase = 3
+            if self.phase == 3:
+                self.driver.set_speed(self.speed)
+                self.driver.set_direction(50 * 2 - self.back_direction)
+                time.sleep(self.turn_time)
+                self.phase = 4
+            if self.phase == 4:
+                self.driver.set_speed(self.speed)
+                self.driver.set_direction(50)
