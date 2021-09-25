@@ -28,7 +28,7 @@ def main():
     speed_minimum_event = SpeedMinimumEvent(driver, scale_prop=0.2, y_limit=0.5, speed_normal=40, speed_high=60,
                                             score_limit=0.8)
     obstacle_event = ObstacleEvent(driver, speed_normal=40)
-    cross_bridge_event = CrossBridgeEvent(driver, imu_limit=300, speed_limit=60, speed_normal=40, speed_upper=50)
+    cross_bridge_event = CrossBridgeEvent(driver, imu_limit=300, speed_limit=80, speed_normal=60, speed_upper=80)
     follow_lidar_event = FollowLidarEvent(driver)
     yellow_back_event = YellowBackEvent(driver, scale_prop=0.2, y_limit=0.7, speed=10, score_limit=0.5, range_limit=450,
                                         turn_time=2, back_direction=35)
