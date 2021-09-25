@@ -305,27 +305,35 @@ class PedestrianEvent(DriverEvent):
              (2)斑马线label的score>0.9
              (3)斑马线位于图片的下方，即y_min>0.6h
              (4)连续1个输出满足上述要求
+             (5)与上次遇到斑马线时间超过10s
     is_end: is_start条件任意一个不满足则is_end
     strategy: 直接刹车速度为0
     process: None ---> speed=0&mode='N' ---> mode='D',speed=speed
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed_normal, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed_normal, detect_time = 10, score_limit=0.5):
         super(PedestrianEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.speed_normal = speed_normal
+        self.detect_time = detect_time
         self.time = time.time()
         self.detect = 1
 
     def is_start(self):
-        width = 1280
-        height = 720
-        flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(1)
-        scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
-        if flag and (score >= self.score_limit) and (scale >= 1) and (y_min >= self.y_limit * height):
-            self.time = time.time()
-            return True
+        if self.detect:
+            width = 1280
+            height = 720
+            flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(1)
+            scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
+            if flag and (score >= self.score_limit) and (scale >= 1) and (y_min >= self.y_limit * height):
+                self.time = time.time()
+                self.detect = 0
+                return True
+        else:
+            time_interval = time.time() - self.time
+            if time_interval >= self.detect_time:
+                self.detect = 1
         return False
 
     def is_end(self):
@@ -357,13 +365,15 @@ class SpeedLimitedEvent(DriverEvent):
     strategy: 速度<=1km/h
     process: None ---> speed=speed_low --->speed=speed_normal
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed_low, speed_normal, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed_low, speed_normal, max_limited_time, score_limit=0.5):
         super(SpeedLimitedEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.speed_low = speed_low
         self.speed_normal = speed_normal
+        self.max_limited_time = max_limited_time
+        self.time = time.time()
 
     def is_start(self):
         width = 1280
@@ -371,6 +381,7 @@ class SpeedLimitedEvent(DriverEvent):
         flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(3)
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
         if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+            self.time = time.time()
             return True
         return False
 
@@ -379,7 +390,10 @@ class SpeedLimitedEvent(DriverEvent):
         height = 720
         flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(5)
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
-        if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+        if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):  # 识别到解除限速
+            self.driver.set_speed(self.speed_normal)
+            return True
+        elif (time.time() - self.time) >= self.max_limited_time:  # 超时
             self.driver.set_speed(self.speed_normal)
             return True
         return False
