@@ -438,7 +438,7 @@ pixThr = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声�
 # 距离映射
 roadWidCm = 80      # 道路宽度 单位：cm
 roadWidPix = 850    # 透视变换后车道线像素数
-isShow = True       # 是否返回可视化图片
+isShow = False       # 是否返回可视化图片
 vip = 3
 
 # 档位设置
