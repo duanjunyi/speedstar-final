@@ -43,8 +43,8 @@ class FollowLaneEvent(DriverEvent):
         super(FollowLaneEvent, self).__init__(driver)
         self.timedelay = timedelay
         self.direction = 50
-        self.direct_cache = np.full((10, ), 50, dtype=int)
-        self.loop_idx = loop_idx(10)
+        self.direct_cache = np.full((self.timedelay * 10, ), 50, dtype=int)
+        self.loop_idx = loop_idx(self.timedelay * 10)
         self.idx = 0
         self.controller = FollowLineCtr
         self.timer = threading.Thread(target = self.set_direct)
@@ -163,7 +163,7 @@ class CrossBridgeEvent(DriverEvent):
         if abs(norm) >= 1:
             norm = sign_norm
         self.driver.set_direction(50 - norm * 50)
-        if imu > self.imu_limit:
+        if imu >= 0:  # 防止坡顶停车
             self.driver.set_speed(self.speed_upper)
         elif self.driver.get_speed() < self.speed_limit:
             self.driver.set_mode('D')
@@ -324,6 +324,7 @@ class PedestrianEvent(DriverEvent):
         self.y_limit = y_limit
         self.speed_normal = speed_normal
         self.time = time.time()
+        self.detect = 1
 
     def is_start(self):
         width = 1280
@@ -331,6 +332,7 @@ class PedestrianEvent(DriverEvent):
         flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(1)
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
         if flag and (score >= self.score_limit) and (scale >= 1) and (y_min >= self.y_limit * height):
+            self.time = time.time()
             return True
         return False
 
