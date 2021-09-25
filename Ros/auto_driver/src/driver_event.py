@@ -140,6 +140,7 @@ class CrossBridgeEvent(DriverEvent):
             self.driver.set_mode('N')
             self.driver.set_mode('D')
             self.driver.set_speed(self.speed_normal)
+            self.driver.set_direction(40)
             return True
         return False
 
@@ -285,7 +286,7 @@ class GreenGoEvent(DriverEvent):
         """ 控制策略 """
         self.driver.set_mode('D')
         self.driver.set_speed(self.speed)
-        time.sleep(0)
+        time.sleep(2)
 
 #"labels_list": ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
 
