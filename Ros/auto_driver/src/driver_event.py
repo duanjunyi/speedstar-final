@@ -73,6 +73,7 @@ class FollowLaneEvent(DriverEvent):
         if self.direction != self.driver.get_direction():
             self.driver.set_direction(self.direction)
 
+
 class FollowLidarEvent(DriverEvent):
     '''
     雷达导航
@@ -266,6 +267,7 @@ class GreenGoEvent(DriverEvent):
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.go_time = go_time
+        self.time = time.time()
 
     def is_start(self):
         """ 事件是否开始 """
@@ -276,18 +278,21 @@ class GreenGoEvent(DriverEvent):
             area = (x_max - x_min) * (y_max - y_min)
             scale = area / (self.scale_prop * width * height)
             if scale >= 1 and y_max <= self.y_limit * height:
+                self.time = time.time()
                 return True
         return False
 
     def is_end(self):
         """ 事件是否终止 """
-        return not self.is_start()
+        if time.time() - self.time >= 2:
+            return not self.is_start()
+        return False
 
     def strategy(self):
         """ 控制策略 """
         self.driver.set_mode('D')
         self.driver.set_speed(self.speed)
-        time.sleep(self.go_time)
+
 
 #"labels_list": ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
 
@@ -469,6 +474,7 @@ class YellowBackEvent(DriverEvent):
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
         if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
             self.driver.set_mode('N')
+            self.time = time.time()
             return True
         return False
 
@@ -485,13 +491,15 @@ class YellowBackEvent(DriverEvent):
         if self.phase == 1:
             self.driver.set_speed(self.speed)
             self.driver.set_direction(self.back_direction)
-            time.sleep(self.turn_time)
-            self.phase = 2
+            if time.time() - self.time >= 2:
+                self.phase = 2
+                self.time = time.time()
         if self.phase == 2:
             self.driver.set_speed(self.speed)
             self.driver.set_direction(50 * 2 - self.back_direction)
-            time.sleep(self.turn_time)
-            self.phase = 3
+            if time.time() - self.time >= 2:
+                self.phase = 3
+                self.time = time.time()
         if self.phase == 3:
             self.driver.set_speed(self.speed)
             self.driver.set_direction(50)
