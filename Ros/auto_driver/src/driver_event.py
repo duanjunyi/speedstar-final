@@ -66,7 +66,7 @@ class FollowLaneEvent(DriverEvent):
         bias, gear = self.driver.get_lane()
         bias = -bias
         if gear == 0: # 直道bias控制
-            self.direction = int( self.controller.control(bias, 0) + 50 )
+            self.direction = int( self.controller.control(bias) + 50 )
         else:  # 弯道档位控制
             sign = 1 if gear > 0 else -1
             self.direction = int( sign * self.gear_rules[int(gear)] + 50 )
@@ -287,6 +287,7 @@ class GreenGoEvent(DriverEvent):
         """ 控制策略 """
         self.driver.set_mode('D')
         self.driver.set_speed(self.speed)
+        time.sleep(0)
 
 #"labels_list": ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
 
