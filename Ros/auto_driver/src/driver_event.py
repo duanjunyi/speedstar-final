@@ -69,10 +69,9 @@ class FollowLaneEvent(DriverEvent):
             self.direction = 50 # int( self.controller.control(bias) + 50 )
         else:  # 弯道档位控制
             sign = 1 if gear > 0 else -1
-            self.direction = int( sign * self.gear_rules[int(gear)] + 50 )
+            self.direction = int( sign * self.gear_rules[int(abs(gear))] + 50 )
         if self.direction != self.driver.get_direction():
             self.driver.set_direction(self.direction)
-
 
 class FollowLidarEvent(DriverEvent):
     '''
