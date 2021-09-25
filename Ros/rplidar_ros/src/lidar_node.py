@@ -93,7 +93,7 @@ class lidar_node():
         width = 60
         obs_range_check = (180-width,180+width)
         num_window = 2*width/10
-        obj_exist = np.num(num_window)
+        obj_exist = np.zeros(num_window)
         flag_1 = 0
         index = 0
         flag_2 = 0
