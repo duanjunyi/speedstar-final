@@ -36,8 +36,8 @@ class laneDetect:
         self.gear = 0              # 档位
         # ------------------         0    1    2    3    4     5     6     7
         self.gear_set      =        [0, 200, 400, 600, 800,    950, 1100, np.inf]
-        self.gear_output = np.array( [[0,   0,   0,   0,   0,   25,   45,   49],   # 入弯参数
-                                      [0,   0,   0,   5,  20,   25,   45,   49]])  # 出弯参数
+        self.gear_output = np.array( [[0,   0,   0,   0,   0,   15,   25,   30],   # 入弯参数
+                                      [0,   0,   0,   5,  10,   15,   25,   30]])  # 出弯参数
         self.gear_idx = 0  #默认用入弯参数
         self.vip = vip             # very important point, bias 和 slop 计算的层数 0 ~ win_n-1
 
