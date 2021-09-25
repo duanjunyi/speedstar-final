@@ -310,13 +310,14 @@ class PedestrianEvent(DriverEvent):
     strategy: 直接刹车速度为0
     process: None ---> speed=0&mode='N' ---> mode='D',speed=speed
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed_normal, detect_time = 10, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed_normal, delay_time=1, detect_time=10, score_limit=0.5):
         super(PedestrianEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.speed_normal = speed_normal
         self.detect_time = detect_time
+        self.delay_time = delay_time
         self.time = time.time()
         self.detect = 1
 
@@ -344,9 +345,10 @@ class PedestrianEvent(DriverEvent):
         return False
 
     def strategy(self):
-        self.driver.set_speed(0)
-        if self.driver.get_speed() <= 2:
-            self.driver.set_mode('N')
+        if time.time() - self.time >= self.delay_time:
+            self.driver.set_speed(0)
+            if self.driver.get_speed() <= 2:
+                self.driver.set_mode('N')
 
 
 class SpeedLimitedEvent(DriverEvent):
