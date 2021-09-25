@@ -50,9 +50,6 @@ class FollowLaneEvent(DriverEvent):
         self.controller = FuzzyCtr(bias_range, gear_range, rules)
         # 档位控制规则 0 ~ 7 档
         self.gear_rules = [0, 10, 15, 25, 35, 40, 45]
-        self.timer = threading.Thread(target = self.set_direct)
-        self.timer.setDaemon(True)
-        self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
 
     def is_start(self):
         """ 事件是否开始 """
@@ -74,12 +71,8 @@ class FollowLaneEvent(DriverEvent):
         else:  # 弯道档位控制
             sign = 1 if gear > 0 else -1
             self.direction = int( sign * self.gear_rules[int(gear)] + 50 )
-
-    def set_direct(self):
-        while True:
+        if self.direction != self.driver.get_direction():
             self.driver.set_direction(self.direction)
-            time.sleep(0.1)
-
 
 class FollowLidarEvent(DriverEvent):
     '''
