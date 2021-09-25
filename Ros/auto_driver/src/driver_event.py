@@ -66,13 +66,13 @@ class FollowLaneEvent(DriverEvent):
         bias, gear = self.driver.get_lane()
         bias = -bias
         if bias != 0: # 直道bias控制
-            if bias > 100:
+            if bias > 50:
                 self.direction = 40
-            elif bias > 50:
+            elif bias > 0:
                 self.direction = 45
-            elif bias < -50:
+            elif bias < 0:
                 self.direction = 55
-            elif bias < -100:
+            elif bias < -50:
                 self.direction = 60
         else:  # 弯道档位控制
             self.direction = int( gear + 50 )
