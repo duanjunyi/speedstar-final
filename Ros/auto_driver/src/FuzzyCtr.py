@@ -12,8 +12,8 @@ class FuzzyCtr():
         :param rules: 规则矩阵,横向代表x(axis=1),纵向代表y(axis=0)
         """
         # 后面补充一个大数
-        self.x_range = np.concatenate([np.array(input1), [input1[-1]+1]]).astype(float)
-        self.y_range = np.concatenate([np.array(input2), [input2[-1]+1]]).astype(float)
+        self.x_range = np.concatenate([np.array(input1), [input1[-1]+10000]]).astype(float)
+        self.y_range = np.concatenate([np.array(input2), [input2[-1]+10000]]).astype(float)
         self.rules = np.array(rules).astype(float)
 
     def control(self, x, y):
@@ -58,7 +58,7 @@ class FuzzyCtr1D():
         :param rules: 规则矩阵,横向代表x(axis=1),纵向代表y(axis=0)
         """
         # 后面补充一个大数
-        self.x_range = np.concatenate([np.array(input1), [input1[-1]+1]]).astype(float)
+        self.x_range = np.concatenate([np.array(input1), [input1[-1]+10000]]).astype(float)
         self.rules = np.array(rules).astype(float)
 
     def control(self, x):
