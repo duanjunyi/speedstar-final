@@ -5,7 +5,7 @@ import rospy
 import time
 from PID import PID
 import threading
-from FuzzyCtr import FollowLineCtr
+from FuzzyCtr import FuzzyCtr
 
 
 def loop_idx(size):
@@ -43,10 +43,13 @@ class FollowLaneEvent(DriverEvent):
         super(FollowLaneEvent, self).__init__(driver)
         self.timedelay = timedelay
         self.direction = 50
-        self.direct_cache = np.full((self.timedelay * 10, ), 50, dtype=int)
-        self.loop_idx = loop_idx(self.timedelay * 10)
-        self.idx = 0
-        self.controller = FollowLineCtr
+        # 定义gear=0时的模糊控制器
+        bias_range = [-40, -30, -20, -15, -8, -3, 0, 3, 8, 15, 20, 30, 40]
+        gear_range = [0]
+        rules = [np.array([-35, -25, -20, -15, -5, 0, 5, 10, 15, 20, 25, 35]),]
+        self.controller = FuzzyCtr(bias_range, gear_range, rules)
+        # 档位控制规则 0 ~ 7 档
+        self.gear_rules = [0, 10, 15, 25, 35, 40, 45]
         self.timer = threading.Thread(target = self.set_direct)
         self.timer.setDaemon(True)
         self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
@@ -64,28 +67,17 @@ class FollowLaneEvent(DriverEvent):
 
     def strategy(self):
         """ 控制策略 """
-        bias, slope = self.driver.get_lane()
+        bias, gear = self.driver.get_lane()
         bias = -bias
-        self.direction = int( self.controller.control(bias, slope) + 50 )
-        # 限位
-        # bias_sign = 1 if bias>=0 else -1
-        # slope_sign = 1 if slope>=0 else -1
-        # gear_direct = (0, 20, 50, 75, 100)
-
-        #     if np.abs(bias) >= 19.5:
-        #         bias = bias_sign * 19.5
-        #     gear = int((bias + 19.5) / 8)
-        #     self.direction = gear_direct[gear]
-        #     return
-        # if np.abs(slope) > 1.5:
-        #     self.direction = slope_sign * 50 + 50
-        #     return
+        if gear == 0: # 直道bias控制
+            self.direction = int( self.controller.control(bias, 0) + 50 )
+        else:  # 弯道档位控制
+            sign = 1 if gear > 0 else -1
+            self.direction = int( sign * self.gear_rules[int(gear)] + 50 )
 
     def set_direct(self):
         while True:
-            self.idx = self.loop_idx.next()
-            self.driver.set_direction(self.direct_cache[self.idx])
-            self.direct_cache[self.idx] = self.direction
+            self.driver.set_direction(self.direction)
             time.sleep(0.1)
 
 

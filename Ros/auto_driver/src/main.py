@@ -16,7 +16,7 @@ signal.signal(signal.SIGINT, sigint_handler)
 
 def main():
     #--- 小车驱动
-    driver = Driver()
+    driver = Driver(debug=False)
     #--- 定义事件列表
     follow_lane_event = FollowLaneEvent(driver, timedelay=1)
     red_stop_event = RedStopEvent(driver, scale_prop=0.2, y_limit=0.5, score_limit=0.8)
