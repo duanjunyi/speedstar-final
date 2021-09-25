@@ -101,7 +101,7 @@ class lidar_node():
 
         if obs_exist_probably:
             for i in range(num_window):
-                obj_exist[i] = self.obj_det_new(scan, (180-width+10*i,180-width+10*(i+1)), self.obs_distancce, 10)
+                obj_exist[i] = self.obj_det_new(scan, (180-width+10*i,180-width+10*(i+1)), self.obs_distance, 10)
             for i in range(num_window):
                 if obj_exist[i] == 1:
                     flag_1 = 1
