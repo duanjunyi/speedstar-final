@@ -20,7 +20,7 @@ def main():
     #--- 定义事件列表
     follow_lane_event = FollowLaneEvent(driver, timedelay=1)
     red_stop_event = RedStopEvent(driver, scale_prop=0.2, y_limit=0.7, score_limit=0.5)
-    green_go_event = GreenGoEvent(driver, scale_prop=0.2, y_limit=0.7, speed=40, score_limit=0.5)
+    green_go_event = GreenGoEvent(driver, scale_prop=0.3, y_limit=0.8, speed=40, score_limit=0.3)
     pedestrian_event = PedestrianEvent(driver, scale_prop=0.06, y_limit=0.6, score_limit=0.9,speed_normal=40,
                                        detect_time=10)
     speed_limited_event = SpeedLimitedEvent(driver, scale_prop=0.2, y_limit=0.5, speed_low=20, speed_normal=40,
