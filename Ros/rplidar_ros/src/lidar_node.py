@@ -65,6 +65,8 @@ class lidar_node():
         self.board_det() # 更新 board_exist, pos_bias, ang_bias
         #self.obj_det(scan) # 更新障碍物obj_exist
         self.obs_det(scan) # 第二版的障碍物检测，更新self.obj_exist
+        if self.board_exist == 1:
+            self.obs_exist = 0
         self.lidar_pub.publish(BoardMsg(    is_obstacle = self.obs_exist,
                                             is_board = self.board_exist,
                                             pos_bias = self.pos_bias,
@@ -93,7 +95,7 @@ class lidar_node():
         width = 60
         obs_range_check = (180-width,180+width)
         num_window = 2*width/10
-        obj_exist = np.num(num_window)
+        obj_exist = np.zeros(num_window)
         flag_1 = 0
         index = 0
         flag_2 = 0
@@ -101,7 +103,7 @@ class lidar_node():
 
         if obs_exist_probably:
             for i in range(num_window):
-                obj_exist[i] = self.obj_det_new(scan, (180-width+10*i,180-width+10*(i+1)), self.obs_distancce, 10)
+                obj_exist[i] = self.obj_det_new(scan, (180-width+10*i,180-width+10*(i+1)), self.obs_distance, 10)
             for i in range(num_window):
                 if obj_exist[i] == 1:
                     flag_1 = 1
