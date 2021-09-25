@@ -12,7 +12,7 @@ import time
 class laneDetect:
     """ 车道线检测类 """
     def __init__(self, Mwarp, kerSz, frameHeight, frameWidth, winWidth, winNum,
-            winThr, pixThr, roadWidCm, roadWidPix, isShow, vip):
+            winThr, pixThr, roadWidCm, roadWidPix, isShow, vip, gear_set):
         self.Mwarp  = Mwarp                         # 透视变换矩阵
         self.kernal = np.ones(kerSz, np.uint8)      # 定义膨胀与腐蚀的核
         self.frame_h = frameHeight
@@ -34,7 +34,7 @@ class laneDetect:
         self.lane_curve = [None, None]
         self.bias = 0.0            # veh_pos - cen_pos, >0偏右，<0偏左，cm
         self.gear = 0              # 档位
-        self.gear_set = [0, 200, 400, 600, 800, 1000, 1200, 1400]         # 档位设置()
+        self.gear_set = gear_set         # 档位设置()
         self.vip = vip             # very important point, bias 和 slop 计算的层数 0 ~ win_n-1
 
 
@@ -45,7 +45,7 @@ class laneDetect:
         self.lane_flag = np.full((2, self.win_n), False, np.bool_)      # 左右车道线 检出标志位
         self.lane_curve = [None, None]
         self.bias = 0.0            # veh_pos - cen_pos, >0偏右，<0偏左，cm
-        self.gear = 0            # 斜率
+        self.gear = 0             # 斜率
 
 
     def draw_gear_set(self, img):
@@ -411,47 +411,39 @@ class laneDetect:
 
 
 
-if __name__ == '__main__':
-    # 透视变换
-    # 快速绕圈
-    # src_points = np.array([[274, 552], [533, 410], [911, 400], [1220, 561]], dtype="float32")
-    # dst_points = np.array([[456, 702], [499, 499], [775, 490], [767, 706]], dtype="float32")
-    src_points = np.array([[236, 545], [510, 399], [812, 387], [1162, 544]], dtype="float32")
-    dst_points = np.array([[414, 706], [446, 441], [868, 430], [863, 708]], dtype="float32")
+""" 定义车道线检测对象 """
+# 透视变换
+# 快速绕圈
+# src_points = np.array([[274, 552], [533, 410], [911, 400], [1220, 561]], dtype="float32")
+# dst_points = np.array([[456, 702], [499, 499], [775, 490], [767, 706]], dtype="float32")
+src_points = np.array([[236, 545], [510, 399], [812, 387], [1162, 544]], dtype="float32")
+dst_points = np.array([[414, 706], [446, 441], [868, 430], [863, 708]], dtype="float32")
 
-    frameWidth = 1280  # 宽
-    frameHeight = 720  # 长
-    Mwarp = cv2.getPerspectiveTransform(src_points, dst_points)  # 透视变换矩阵计算
-    camMat = np.array([[6.678151103217834e+02, 0, 6.430528691213178e+02],
-                    [0, 7.148758960098705e+02, 3.581815819255082e+02], [0, 0, 1]])  # 相机校正矩阵
-    camDistortion = np.array([[-0.056882894892153, 0.002184364631645, -0.002836821379133, 0, 0]])  # 相机失真矩阵
+frameWidth = 1280  # 宽
+frameHeight = 720  # 长
+Mwarp = cv2.getPerspectiveTransform(src_points, dst_points)  # 透视变换矩阵计算
+camMat = np.array([[6.678151103217834e+02, 0, 6.430528691213178e+02],
+                [0, 7.148758960098705e+02, 3.581815819255082e+02], [0, 0, 1]])  # 相机校正矩阵
+camDistortion = np.array([[-0.056882894892153, 0.002184364631645, -0.002836821379133, 0, 0]])  # 相机失真矩阵
 
-    # 视觉处理
-    kerSz = (5, 5)  # 膨胀与腐蚀核大小
-    # grayThr = 160  # 二值化阈值
-    # roiXRatio = 0.5  # 统计x方向上histogram时选取的y轴坐标范围，以下方底边为起始点，比例定义终止位置
+# 视觉处理
+kerSz = (5, 5)  # 膨胀与腐蚀核大小
 
-    # 划窗检测
-    winWidth = 200  # 窗的宽度
-    winNum = 20  # 窗的数目
-    winThr = 8    # 单条车道线需有8个框检出车道线
-    pixThr = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
+# 划窗检测
+winWidth = 200  # 窗的宽度
+winNum = 20  # 窗的数目
+winThr = 8    # 单条车道线需有8个框检出车道线
+pixThr = 200  # 最小连续像素，小于该长度的被舍弃以去除噪声影响
 
-    # 距离映射
-    roadWidCm = 80      # 道路宽度 单位：cm
-    roadWidPix = 850    # 透视变换后车道线像素数
-    isShow = True       # 是否返回可视化图片
-    vip = 3
-    cap = cv2.VideoCapture(BASE_DIR + '\\video\\test6.mp4')  # 读入视频
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, frameWidth)  # 设置读入图像宽
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frameHeight)  # 设置读入图像长
-    cap.set(cv2.CAP_PROP_FPS, 20)    # 设置读入帧率
+# 距离映射
+roadWidCm = 80      # 道路宽度 单位：cm
+roadWidPix = 850    # 透视变换后车道线像素数
+isShow = True       # 是否返回可视化图片
+vip = 3
 
-    lane_det = laneDetect(Mwarp, kerSz, frameHeight, frameWidth, winWidth, winNum,
-                        winThr, pixThr, roadWidCm, roadWidPix, isShow, vip)
-    while True:
-        ret, img = cap.read()  # 读入图片
-        # img = cv2.flip(img, 1)
-        if ret == True:
-            lane_det.spin(img)
+# 档位设置
+gear_set = [0, 200, 400, 600, 800, 1000, 1200, 1400]
+
+laneDet = laneDetect(Mwarp, kerSz, frameHeight, frameWidth, winWidth, winNum,
+                    winThr, pixThr, roadWidCm, roadWidPix, isShow, vip, gear_set)
 

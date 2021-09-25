@@ -51,26 +51,32 @@ class FuzzyCtr():
         return x
 
 
-# 定义车道线循迹控制器
-bias_range = [-50, -30, -15, 0, 15, 30, 50]
-slope_range = [-3, -2, -1, 0, 1, 2, 3]
-        # -50, -30, -15,   0,  15,  30, 50
-rules = [
-         np.array([-30, -25, -15, 0, 15, 25, 30])-20,  # -3
-         np.array([-30, -25, -15, 0, 15, 25, 30])-10,  # -2
-         np.array([-30, -25, -15, 0, 15, 25, 30])-5,  # -1
-         np.array([-30, -25, -15, 0, 15, 25, 30]),  # -0
-         np.array([-30, -25, -15, 0, 15, 25, 30])+5,  # 1
-         np.array([-30, -25, -15, 0, 15, 25, 30])+10,  # 2
-         np.array([-30, -25, -15, 0, 15, 25, 30])+20,  # 3
-        ]
+# # 定义车道线循迹控制器
+# bias_range = [-50, -30, -15, 0, 15, 30, 50]
+# slope_range = [-3, -2, -1, 0, 1, 2, 3]
+#         # -50, -30, -15,   0,  15,  30, 50
+# rules = [
+#          np.array([-30, -25, -15, 0, 15, 25, 30])-20,  # -3
+#          np.array([-30, -25, -15, 0, 15, 25, 30])-10,  # -2
+#          np.array([-30, -25, -15, 0, 15, 25, 30])-5,  # -1
+#          np.array([-30, -25, -15, 0, 15, 25, 30]),  # -0
+#          np.array([-30, -25, -15, 0, 15, 25, 30])+5,  # 1
+#          np.array([-30, -25, -15, 0, 15, 25, 30])+10,  # 2
+#          np.array([-30, -25, -15, 0, 15, 25, 30])+20,  # 3
+#         ]
 
-FollowLineCtr = FuzzyCtr(bias_range, slope_range, rules)
+# FollowLineCtr = FuzzyCtr(bias_range, slope_range, rules)
 
 
 if __name__ == '__main__':
+    bias_range = [-50, -30, -15, 0, 15, 30, 50]
+    gear_range = [0]
+            # -50, -30, -15,   0,  15,  30, 50
+    rules = [
+            np.array([-30, -25, -15, 0, 15, 25, 30]),  # -3
+            ]
 
+    FollowLineCtr = FuzzyCtr(bias_range, gear_range, rules)
+    y = 0
     for x in range(-30, 30, 5):
-        for y in np.array(range(-5, 5))*0.4:
-
-            print(x, y, FollowLineCtr.control(x, y))
+        print(x, y, FollowLineCtr.control(x, y))

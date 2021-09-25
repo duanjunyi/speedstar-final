@@ -127,7 +127,7 @@ class Driver(object):
     #--- 获取小车状态
     def get_lane(self):
         return  self.lane_cache[self.lane_idx].bias, \
-                self.lane_cache[self.lane_idx].slope
+                self.lane_cache[self.lane_idx].gear
 
     def get_objs(self, index):  # index: ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
         flag = self.hilens_cache[self.hi_idx].flag[index]
