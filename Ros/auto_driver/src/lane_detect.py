@@ -43,7 +43,7 @@ def main():
         ret, img = cap.read()
         if ret:
             bias, gear = laneDet.spin(img)
-            lane_pub.publish(LaneMsg(bias=bias, slope=gear))
+            lane_pub.publish(LaneMsg(bias=bias, gear=gear))
 
 if __name__ == '__main__':
     main()
