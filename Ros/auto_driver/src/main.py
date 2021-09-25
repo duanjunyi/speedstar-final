@@ -13,24 +13,23 @@ def sigint_handler(signal, frame):
 signal.signal(signal.SIGINT, sigint_handler)
 
 
-
 def main():
     #--- 小车驱动
     driver = Driver(debug=False)
     #--- 定义事件列表
     follow_lane_event = FollowLaneEvent(driver, timedelay=1)
-    red_stop_event = RedStopEvent(driver, scale_prop=0.2, y_limit=0.7, score_limit=0.5)
-    green_go_event = GreenGoEvent(driver, scale_prop=0.3, y_limit=0.8, speed=40, score_limit=0.3)
-    pedestrian_event = PedestrianEvent(driver, scale_prop=0.06, y_limit=0.6, score_limit=0.9,speed_normal=40,
+    red_stop_event = RedStopEvent(driver, scale_prop=0.02, y_limit=0.7, score_limit=0.4)
+    green_go_event = GreenGoEvent(driver, scale_prop=0.02, y_limit=0.7, speed=60, score_limit=0.3, go_time=2)
+    pedestrian_event = PedestrianEvent(driver, scale_prop=0.1, y_limit=0.5, score_limit=0.8,speed_normal=60,
                                        detect_time=10)
-    speed_limited_event = SpeedLimitedEvent(driver, scale_prop=0.2, y_limit=0.5, speed_low=20, speed_normal=40,
-                                            score_limit=0.8, max_limited_time=5)
-    speed_minimum_event = SpeedMinimumEvent(driver, scale_prop=0.2, y_limit=0.5, speed_normal=40, speed_high=60,
-                                            score_limit=0.8)
-    obstacle_event = ObstacleEvent(driver, speed_normal=40)
+    speed_limited_event = SpeedLimitedEvent(driver, scale_prop=0.01, y_limit=0.8, speed_low=20, speed_normal=60,
+                                            score_limit=0.85, max_limited_time=5)
+    speed_minimum_event = SpeedMinimumEvent(driver, scale_prop=0.01, y_limit=0.8, speed_normal=60, speed_high=80,
+                                            score_limit=0.85)
+    obstacle_event = ObstacleEvent(driver, speed_normal=60)
     cross_bridge_event = CrossBridgeEvent(driver, imu_limit=300, speed_limit=80, speed_normal=60, speed_upper=80)
     follow_lidar_event = FollowLidarEvent(driver)
-    yellow_back_event = YellowBackEvent(driver, scale_prop=0.2, y_limit=0.7, speed=10, score_limit=0.5, range_limit=450,
+    yellow_back_event = YellowBackEvent(driver, scale_prop=0.02, y_limit=0.7, speed=20, score_limit=0.4, range_limit=450,
                                         turn_time=2, back_direction=35)
     start_end_event = StartEndEvent(driver, scale_prop=0.2, y_limit=0.5, speed=10, score_limit=0.5, range_limit=250,
                                     turn_time=2, back_direction=65)

@@ -109,7 +109,7 @@ class FollowLidarEvent(DriverEvent):
 class CrossBridgeEvent(DriverEvent):
     '''
     过桥事件
-    is_start: 满足以下条件：
+    is_start: 满足以下条件:
             (1)检测到挡板
             (2)俯仰角大于一定正向角度
     is_end: 满足以下条件：
@@ -253,7 +253,7 @@ class GreenGoEvent(DriverEvent):
     strategy: 直接刹车速度为0
     process: mode='D' ---> speed=speed ---> None
     """
-    def __init__(self, driver, scale_prop, y_limit, speed, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed, go_time, score_limit=0.5):
         """
         初始化
         :param area_thr: 检测红灯的面积阈值
@@ -265,6 +265,7 @@ class GreenGoEvent(DriverEvent):
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
+        self.go_time = go_time
 
     def is_start(self):
         """ 事件是否开始 """
@@ -286,7 +287,7 @@ class GreenGoEvent(DriverEvent):
         """ 控制策略 """
         self.driver.set_mode('D')
         self.driver.set_speed(self.speed)
-        time.sleep(2)
+        time.sleep(self.go_time)
 
 #"labels_list": ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
 
