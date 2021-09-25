@@ -12,11 +12,11 @@ def run():
 
     # socket
     sock_sender = NumpySocket()
-    sock_sender.initialize_sender('192.168.2.1', 7777)
+    sock_sender.initialize_sender('192.168.43.215', 7777)
 
     # 构造摄像头
     cap = hilens.VideoCapture()
-    disp = hilens.Display(hilens.HDMI)
+    #disp = hilens.Display(hilens.HDMI)
 
     while True:
 
@@ -31,7 +31,7 @@ def run():
         nv21 = hilens.cvt_color(bgr, hilens.BGR2YUV_NV21)
 
         #输出到HDMI
-        disp.show(nv21)
+        #disp.show(nv21)
 
         #输出到socket
         sock_sender.send_array(bgr)

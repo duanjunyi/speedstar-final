@@ -323,6 +323,7 @@ class PedestrianEvent(DriverEvent):
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.speed_normal = speed_normal
+        self.time = time.time()
 
     def is_start(self):
         width = 1280
