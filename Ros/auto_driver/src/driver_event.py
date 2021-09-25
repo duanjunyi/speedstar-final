@@ -277,7 +277,6 @@ class GreenGoEvent(DriverEvent):
             area = (x_max - x_min) * (y_max - y_min)
             scale = area / (self.scale_prop * width * height)
             if scale >= 1 and y_max <= self.y_limit * height:
-                self.driver.set_mode('D')
                 return True
         return False
 
@@ -287,6 +286,7 @@ class GreenGoEvent(DriverEvent):
 
     def strategy(self):
         """ 控制策略 """
+        self.driver.set_mode('D')
         self.driver.set_speed(self.speed)
 
 #"labels_list": ["green_go", "pedestrian_crossing", "red_stop", "speed_limited", "speed_minimum", "speed_unlimited", "yellow_back"]
@@ -459,10 +459,7 @@ class YellowBackEvent(DriverEvent):
         self.turn_time = turn_time
         self.back_direction = back_direction
         self.phase = 1
-        self.timer1 = threading.Timer(self.turn_time, self.delay1)
-        self.timer2 = threading.Timer(self.turn_time, self.delay2)
-        self.timer1.setDaemon(True)
-        self.timer2.setDaemon(True)
+        self.time = time.time()
 
 
     def is_start(self):
@@ -472,7 +469,6 @@ class YellowBackEvent(DriverEvent):
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
         if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
             self.driver.set_mode('N')
-            self.timer1.start()
             return True
         return False
 
@@ -489,20 +485,17 @@ class YellowBackEvent(DriverEvent):
         if self.phase == 1:
             self.driver.set_speed(self.speed)
             self.driver.set_direction(self.back_direction)
-        elif self.phase == 2:
+            time.sleep(self.turn_time)
+            self.phase = 2
+        if self.phase == 2:
             self.driver.set_speed(self.speed)
             self.driver.set_direction(50 * 2 - self.back_direction)
-        elif self.phase == 3:
+            time.sleep(self.turn_time)
+            self.phase = 3
+        if self.phase == 3:
             self.driver.set_speed(self.speed)
             self.driver.set_direction(50)
         return True
-
-    def delay1(self):
-        self.timer2.start()
-        self.phase = 2
-
-    def delay2(self):
-        self.phase = 3
 
 
 class StartEndEvent(DriverEvent):
