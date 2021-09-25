@@ -137,6 +137,9 @@ class CrossBridgeEvent(DriverEvent):
         _, board, _, _ = self.driver.get_lidar()
         imu, _, _ = self.driver.get_theta()
         if not board and imu > -self.imu_limit:
+            self.driver.set_mode('N')
+            self.driver.set_mode('D')
+            self.driver.set_speed(self.speed_normal)
             return True
         return False
 
@@ -148,13 +151,8 @@ class CrossBridgeEvent(DriverEvent):
         if abs(norm) >= 1:
             norm = sign_norm
         self.driver.set_direction(50 - norm * 50)
-        if imu >= 0:  # 防止坡顶停车
+        if imu >= -self.imu_limit:  # 上坡
             self.driver.set_speed(self.speed_upper)
-        elif self.driver.get_speed() < self.speed_limit:
-            self.driver.set_mode('D')
-            self.driver.set_speed(self.speed_normal)
-        else:
-            self.driver.set_mode('N')
         return True
 
 
