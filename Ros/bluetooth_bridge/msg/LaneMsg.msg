@@ -1,2 +1,2 @@
 float32 bias
-float32 slope
+int32 gear  # 转向档位

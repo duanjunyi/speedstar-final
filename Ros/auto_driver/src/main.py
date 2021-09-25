@@ -16,18 +16,22 @@ signal.signal(signal.SIGINT, sigint_handler)
 
 def main():
     #--- 小车驱动
-    driver = Driver()
+    driver = Driver(debug=False)
     #--- 定义事件列表
-    follow_lane_event = FollowLaneEvent(driver, 1)
-    red_stop_event = RedStopEvent(driver, 0.2, 0.5, 0.8)
-    green_go_event = GreenGoEvent(driver, 0.2, 0.5, 40, 0.8)
-    pedestrian_event = PedestrianEvent(driver, 0.06, 0.6, 0.9)
-    speed_limited_event = SpeedLimitedEvent(driver, 0.2, 0.5, 20, 40, 0.8)
-    speed_minimum_event = SpeedMinimumEvent(driver, 0.2, 0.5, 40, 60, 0.8)
-    obstacle_event = ObstacleEvent(driver, 40)
-    cross_bridge_event = CrossBridgeEvent(driver, 300, 60, 40, 50)
+    follow_lane_event = FollowLaneEvent(driver, timedelay=1)
+    red_stop_event = RedStopEvent(driver, scale_prop=0.2, y_limit=0.5, score_limit=0.8)
+    green_go_event = GreenGoEvent(driver, scale_prop=0.2, y_limit=0.5, speed=40, score_limit=0.8)
+    pedestrian_event = PedestrianEvent(driver, scale_prop=0.06, y_limit=0.6, score_limit=0.9,speed_normal=40,
+                                       detect_time=10)
+    speed_limited_event = SpeedLimitedEvent(driver, scale_prop=0.2, y_limit=0.5, speed_low=20, speed_normal=40,
+                                            score_limit=0.8, max_limited_time=5)
+    speed_minimum_event = SpeedMinimumEvent(driver, scale_prop=0.2, y_limit=0.5, speed_normal=40, speed_high=60,
+                                            score_limit=0.8)
+    obstacle_event = ObstacleEvent(driver, speed_normal=40)
+    cross_bridge_event = CrossBridgeEvent(driver, imu_limit=300, speed_limit=60, speed_normal=40, speed_upper=50)
     follow_lidar_event = FollowLidarEvent(driver)
-    yellow_back_event = YellowBackEvent(driver, 0.2, 0.5, 10, 0.8, 250, 2, 65)
+    yellow_back_event = YellowBackEvent(driver, scale_prop=0.2, y_limit=0.5, speed=10, score_limit=0.8, range_limit=250,
+                                        turn_time=2, back_direction=65)
 
     event_list = [obstacle_event, red_stop_event, pedestrian_event, yellow_back_event, cross_bridge_event,
                   follow_lidar_event, green_go_event, follow_lane_event, speed_limited_event, speed_minimum_event]  # 默认为优先级排序，越靠前优先级越高

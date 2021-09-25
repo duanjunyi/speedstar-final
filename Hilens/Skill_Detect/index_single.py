@@ -53,12 +53,12 @@ def run():
     hl_camera = Hilens('detect')  # 根据实际情况指定
 
     # 初始化目标检测类
-    objDet = ObjDetect('yolov3_new.om')
+    objDet = ObjDetect('yolo3_resnet18_signal.om')
 
     while True:
         input_img = hl_camera.read_img()  # 读取图像
         bboxes = objDet.run(input_img)  # 目标检测
-        #hl_camera.show(input_img, bboxes)  # 显示目标检测框和车道线
+        hl_camera.show(input_img, bboxes)  # 显示目标检测框和车道线
         send_msg = socket_sender.wrap(bboxes)  # 数据打包
         socket_sender.send_array(send_msg)  # 发送数据
 

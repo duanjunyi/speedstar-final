@@ -5,7 +5,7 @@ import rospy
 import time
 from PID import PID
 import threading
-from FuzzyCtr import FollowLineCtr
+from FuzzyCtr import FuzzyCtr
 
 
 def loop_idx(size):
@@ -43,13 +43,13 @@ class FollowLaneEvent(DriverEvent):
         super(FollowLaneEvent, self).__init__(driver)
         self.timedelay = timedelay
         self.direction = 50
-        self.direct_cache = np.full((10, ), 50, dtype=int)
-        self.loop_idx = loop_idx(10)
-        self.idx = 0
-        self.controller = FollowLineCtr
-        self.timer = threading.Thread(target = self.set_direct)
-        self.timer.setDaemon(True)
-        self.timer.start()  #在等红绿灯的时候就会改方向，可能需要调整
+        # 定义gear=0时的模糊控制器
+        bias_range = [-40, -30, -20, -15, -8, -3, 0, 3, 8, 15, 20, 30, 40]
+        gear_range = [0]
+        rules = [np.array([-35, -25, -20, -15, -5, 0, 5, 10, 15, 20, 25, 35]),]
+        self.controller = FuzzyCtr(bias_range, gear_range, rules)
+        # 档位控制规则 0 ~ 7 档
+        self.gear_rules = [0, 10, 15, 25, 35, 40, 45]
 
     def is_start(self):
         """ 事件是否开始 """
@@ -64,30 +64,15 @@ class FollowLaneEvent(DriverEvent):
 
     def strategy(self):
         """ 控制策略 """
-        bias, slope = self.driver.get_lane()
+        bias, gear = self.driver.get_lane()
         bias = -bias
-        self.direction = int( self.controller.control(bias, slope) + 50 )
-        # 限位
-        # bias_sign = 1 if bias>=0 else -1
-        # slope_sign = 1 if slope>=0 else -1
-        # gear_direct = (0, 20, 50, 75, 100)
-
-        #     if np.abs(bias) >= 19.5:
-        #         bias = bias_sign * 19.5
-        #     gear = int((bias + 19.5) / 8)
-        #     self.direction = gear_direct[gear]
-        #     return
-        # if np.abs(slope) > 1.5:
-        #     self.direction = slope_sign * 50 + 50
-        #     return
-
-    def set_direct(self):
-        while True:
-            self.idx = self.loop_idx.next()
-            self.driver.set_direction(self.direct_cache[self.idx])
-            self.direct_cache[self.idx] = self.direction
-            time.sleep(0.1)
-
+        if gear == 0: # 直道bias控制
+            self.direction = int( self.controller.control(bias, 0) + 50 )
+        else:  # 弯道档位控制
+            sign = 1 if gear > 0 else -1
+            self.direction = int( sign * self.gear_rules[int(gear)] + 50 )
+        if self.direction != self.driver.get_direction():
+            self.driver.set_direction(self.direction)
 
 class FollowLidarEvent(DriverEvent):
     '''
@@ -163,7 +148,7 @@ class CrossBridgeEvent(DriverEvent):
         if abs(norm) >= 1:
             norm = sign_norm
         self.driver.set_direction(50 - norm * 50)
-        if imu > self.imu_limit:
+        if imu >= 0:  # 防止坡顶停车
             self.driver.set_speed(self.speed_upper)
         elif self.driver.get_speed() < self.speed_limit:
             self.driver.set_mode('D')
@@ -313,24 +298,35 @@ class PedestrianEvent(DriverEvent):
              (2)斑马线label的score>0.9
              (3)斑马线位于图片的下方，即y_min>0.6h
              (4)连续1个输出满足上述要求
+             (5)与上次遇到斑马线时间超过10s
     is_end: is_start条件任意一个不满足则is_end
     strategy: 直接刹车速度为0
     process: None ---> speed=0&mode='N' ---> mode='D',speed=speed
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed_normal, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed_normal, detect_time = 10, score_limit=0.5):
         super(PedestrianEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.speed_normal = speed_normal
+        self.detect_time = detect_time
+        self.time = time.time()
+        self.detect = 1
 
     def is_start(self):
-        width = 1280
-        height = 720
-        flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(1)
-        scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
-        if flag and (score >= self.score_limit) and (scale >= 1) and (y_min >= self.y_limit * height):
-            return True
+        if self.detect:
+            width = 1280
+            height = 720
+            flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(1)
+            scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
+            if flag and (score >= self.score_limit) and (scale >= 1) and (y_min >= self.y_limit * height):
+                self.time = time.time()
+                self.detect = 0
+                return True
+        else:
+            time_interval = time.time() - self.time
+            if time_interval >= self.detect_time:
+                self.detect = 1
         return False
 
     def is_end(self):
@@ -362,13 +358,15 @@ class SpeedLimitedEvent(DriverEvent):
     strategy: 速度<=1km/h
     process: None ---> speed=speed_low --->speed=speed_normal
     '''
-    def __init__(self, driver, scale_prop, y_limit, speed_low, speed_normal, score_limit=0.5):
+    def __init__(self, driver, scale_prop, y_limit, speed_low, speed_normal, max_limited_time, score_limit=0.5):
         super(SpeedLimitedEvent, self).__init__(driver)
         self.scale_prop = scale_prop
         self.score_limit = score_limit
         self.y_limit = y_limit
         self.speed_low = speed_low
         self.speed_normal = speed_normal
+        self.max_limited_time = max_limited_time
+        self.time = time.time()
 
     def is_start(self):
         width = 1280
@@ -376,6 +374,7 @@ class SpeedLimitedEvent(DriverEvent):
         flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(3)
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
         if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+            self.time = time.time()
             return True
         return False
 
@@ -384,7 +383,10 @@ class SpeedLimitedEvent(DriverEvent):
         height = 720
         flag, x_min, x_max, y_min, y_max, score = self.driver.get_objs(5)
         scale = (y_max - y_min) * (x_max - x_min) / (self.scale_prop * width * height)
-        if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):
+        if flag and (score >= self.score_limit) and (scale >= 1) and (y_min <= self.y_limit * height):  # 识别到解除限速
+            self.driver.set_speed(self.speed_normal)
+            return True
+        elif (time.time() - self.time) >= self.max_limited_time:  # 超时
             self.driver.set_speed(self.speed_normal)
             return True
         return False
