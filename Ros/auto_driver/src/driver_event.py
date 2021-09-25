@@ -45,7 +45,7 @@ class FollowLaneEvent(DriverEvent):
         self.direction = 50
         # 定义gear=0时的模糊控制器
         bias_range = [-40, -30, -20, -15, -8, -3, 0, 3, 8, 15, 20, 30, 40]
-        rules = np.array([-35, -25, -20, -15, -5, 0, 5, 10, 15, 20, 25, 35])
+        rules = np.array([-35, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 35])
         self.controller = FuzzyCtr1D(bias_range, rules)
         # 档位控制规则 0 ~ 7 档
         self.gear_rules = [0, 8, 12, 20, 25, 32, 40]
