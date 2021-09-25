@@ -71,21 +71,13 @@ class FollowLaneEvent(DriverEvent):
             elif bias > 50:
                 self.direction = 55
             elif bias < -50:
-                self.direction = -60
+                self.direction = 45
             elif bias < -100:
-                self.direction = -55
+                self.direction = 40
         else:  # 弯道档位控制
             self.direction = int( gear + 50 )
-            self.direction = self.clump(self.direction, 0, 100)
-        self.driver.set_direction(int(self.direction))
+        self.driver.set_direction(self.direction)
 
-    def clump(self, x, low, high):
-        """ 限制幅值 """
-        if x < low:
-            return low
-        if x > high:
-            return high
-        return x
 
 class FollowLidarEvent(DriverEvent):
     '''
