@@ -137,6 +137,7 @@ class CrossBridgeEvent(DriverEvent):
         imu, _, _ = self.driver.get_theta()
         if not board and imu > -self.imu_limit:
             self.driver.set_mode('N')
+            time.sleep(0.5)
             self.driver.set_mode('D')
             self.driver.set_speed(self.speed_normal)
             self.driver.set_direction(40)
